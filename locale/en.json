@@ -1,0 +1,18 @@
+{
+  "meta": {"title": "Turn costs", "description": "Show estimated model cost, request counts and token pricing below each completed turn."},
+  "summary": "Estimated model cost: {amount}",
+  "partial": "Known model cost: {amount}",
+  "unavailable": "Model cost unavailable",
+  "zero": "No model calls this turn",
+  "calls": "{count} calls", "missing": "{count} calls have incomplete billing data",
+  "inherited": "Inherited history; excluded from new spending in this branch",
+  "scope": "Model requests in this session only. Subagents, title generation and tool charges are excluded. Estimates use API usage and configured prices; the provider invoice is authoritative.",
+  "timeRule": "Peak pricing uses request start time. Cache writes use the uncached input rate.",
+  "history": "Older records are recalculated using verified historical prices. Prices checked on 2026-10-29.",
+  "session": "New session model cost through this turn: {amount}",
+  "input": "Uncached input", "cacheRead": "Cache reads", "cacheWrite": "Cache writes", "output": "Output (including reasoning)",
+  "tokens": "Tokens", "price": "Rate / 1M tokens", "subtotal": "Estimated cost",
+  "peak": "Peak", "offPeak": "Off-peak", "version": "Price version",
+  "usage-unavailable": "Usage missing or incomplete", "price-unavailable": "No applicable price", "calendar-expired": "Peak calendar needs updating",
+  "waiting": "Loading cost estimate", "unknown": "Unknown", "sessionPartial": "Some calls are missing from this subtotal."
+}

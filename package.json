@@ -1,0 +1,81 @@
+{
+  "name": "@local/deepseek-cost-meter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Per-turn model cost estimates for DeepSeek Harness",
+  "license": "MIT",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "src/*.js",
+    "rates.json",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "VERIFICATION.md",
+    "LICENSE",
+    "scripts/*.mjs",
+    "scripts/*.sh",
+    "scripts/*.cjs",
+    "tests/*.test.js",
+    "README.en.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "docs/*.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.js",
+    "check": "node --check index.js && node --check client.js && npm test"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "bundleDependencies": [
+    "zod"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "devDependencies": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/luomuwen/deepseek-cost-meter.git"
+  },
+  "homepage": "https://github.com/luomuwen/deepseek-cost-meter#readme",
+  "bugs": {
+    "url": "https://github.com/luomuwen/deepseek-cost-meter/issues"
+  },
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "plugin",
+    "token-usage",
+    "cost-tracking"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

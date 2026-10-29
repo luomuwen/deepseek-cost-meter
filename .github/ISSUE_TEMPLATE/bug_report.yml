@@ -1,0 +1,22 @@
+name: Bug report / 问题反馈
+description: Report a reproducible problem with usage, costs or display.
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / 环境
+      description: Plugin version, Harness version, OS and installation method.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps, expected result and actual result / 复现与结果
+      description: Use sanitized fixtures; never include keys or private conversations.
+    validations:
+      required: true
+  - type: textarea
+    id: pricing
+    attributes:
+      label: Pricing context / 计费上下文
+      description: For cost mismatches, include provider/model, timezone, price version and sanitized token counts.

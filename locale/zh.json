@@ -1,0 +1,19 @@
+{
+  "meta": {"title": "每轮费用", "description": "在每轮回复下方显示模型费用估算、调用次数和 token 计费明细。"},
+  "summary": "本轮模型费用约 {amount}",
+  "partial": "本轮已知模型费用约 {amount}",
+  "unavailable": "本轮模型费用暂无法估算",
+  "zero": "本轮没有模型调用",
+  "calls": "{count} 次调用",
+  "missing": "{count} 次调用缺少完整计费数据",
+  "inherited": "继承自原会话，不计入本分支新增费用",
+  "scope": "仅统计本会话模型请求，不含子 Agent、标题生成及工具费用。金额按 API 用量与单价估算，以服务商账单为准。",
+  "timeRule": "峰谷价按请求开始时间估算；缓存写入按未命中输入计价。",
+  "history": "安装前的记录按已核验的历史价格回算。价格表核验日期：2026-10-29。",
+  "session": "本会话新增模型费用（截至本轮）约 {amount}",
+  "input": "未缓存输入", "cacheRead": "缓存读取", "cacheWrite": "缓存写入", "output": "输出（含推理）",
+  "tokens": "Token 数", "price": "单价 / 百万 token", "subtotal": "费用估算",
+  "peak": "高峰时段", "offPeak": "空闲时段", "version": "价格版本",
+  "usage-unavailable": "用量缺失或不完整", "price-unavailable": "缺少适用价格", "calendar-expired": "峰谷日历需要更新",
+  "waiting": "费用统计正在加载", "unknown": "未知", "sessionPartial": "累计中有未能计价的调用。"
+}
