@@ -3,6 +3,11 @@
 [English](README.en.md) · 简体中文
 
 [![CI](https://github.com/luomuwen/deepseek-cost-meter/actions/workflows/ci.yml/badge.svg)](https://github.com/luomuwen/deepseek-cost-meter/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/deepseek-cost-meter)](https://www.npmjs.com/package/deepseek-cost-meter)
+[![npm downloads](https://img.shields.io/npm/dm/deepseek-cost-meter)](https://www.npmjs.com/package/deepseek-cost-meter)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+[npm 安装包](https://www.npmjs.com/package/deepseek-cost-meter) · [dsh market](https://awesome-dsh-plugin.com/zh/p/luomuwen/deepseek-cost-meter/) · [版本发布](https://github.com/luomuwen/deepseek-cost-meter/releases) · [问题反馈](https://github.com/luomuwen/deepseek-cost-meter/issues)
 
 独立社区插件，采用 MIT 许可证；与 DeepSeek 官方无隶属关系。
 
@@ -12,15 +17,32 @@
 
 ## 安装
 
-推荐通过 npm 包名安装（Node.js 22+ 的 Harness 环境）：
+需要已安装的 DeepSeek Harness；已验证版本见上文。插件不需要 API Key，不会发起额外模型请求。
+
+推荐通过 npm 包名安装到桌面版：
 
 ```sh
 dsh plugin --profile desktop add deepseek-cost-meter
-# Web profile:
-dsh plugin --profile web add deepseek-cost-meter
 ```
 
-macOS 桌面版没有全局 `dsh` 时，使用应用自带的 `/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`。
+macOS 若提示 `dsh: command not found`，可直接复制下面的完整命令：
+
+```sh
+"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
+  plugin --profile desktop add deepseek-cost-meter
+```
+
+Web 版使用 `dsh plugin --profile web add deepseek-cost-meter`。安装后重启对应的 Harness 应用或 Web 服务，完成一轮对话后即可在回复下方查看费用。
+
+市场展示名为 **DeepSeek Cost Meter（每轮费用）**，npm 包名为 **`deepseek-cost-meter`**。市场的 npm 信息由其定时任务自动同步；若市场仍展示旧版安装包，可直接使用上面的 npm 命令。
+
+### 更新 npm 版
+
+```sh
+dsh plugin --profile desktop add deepseek-cost-meter@latest
+```
+
+更新后重启 Harness。Web 用户改用 `--profile web`；查看本机安装版本可运行 `dsh plugin --profile desktop list --depth 0`。
 
 ### 从 0.1.0 升级
 
@@ -95,7 +117,7 @@ dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.1.1.tgz
 
 ## 修改价格
 
-首次安装可修改 `rates.json`。运行后修改该文件并重启，或通过个人配置中对应插件行的 `config.rates` 指定完整同结构价格表。示意：
+推荐通过个人配置中对应插件行的 `config.rates` 指定完整同结构价格表，避免直接修改已安装包的文件后被升级覆盖。源码开发时也可修改 `rates.json`。修改后重启 Harness。示意：
 
 ```yaml
 - id: local-deepseek-cost-meter
@@ -120,6 +142,20 @@ dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.1.1.tgz
 不提供 `peak` 则全天使用 `offPeak`。价格以字符串填写，最多六位小数。配置是完整替换，需保留仍要使用的其他模型行；高峰日历需提供实际节假日，不应随意延长覆盖期。
 
 每次价格配置变化会向 Harness 存储域 `local_turn_cost_prices` 追加不可变快照。首次快照从 `effectiveFrom` 回算；后续快照从加载新配置的时间生效。已保存的旧快照继续用于旧调用；卸载不会删除快照。更新算法或价格目录时投影缓存自动重建。丢失该存储域后只能按剩余价格表回算，因此此插件不是财务账本。
+
+## 下载统计
+
+- [npm 包页面](https://www.npmjs.com/package/deepseek-cost-meter)可查看版本和下载量；顶部徽章展示最近一个月的 npm 下载量。
+- [最近一周下载量 JSON](https://api.npmjs.org/downloads/point/last-week/deepseek-cost-meter)和[最近一个月下载量 JSON](https://api.npmjs.org/downloads/point/last-month/deepseek-cost-meter)可用于自己的统计工具。
+- [GitHub Releases](https://github.com/luomuwen/deepseek-cost-meter/releases)安装包下载与 npm 下载分别统计。npm 下载次数不等于独立用户数或活跃安装数，CI、重复安装和缓存都会影响统计。
+
+插件本身不上传使用遥测。新发布包的下载统计和市场展示可能延迟更新。
+
+## 常见问题
+
+- **安装后没有费用栏：** 确认安装到了正在使用的 `desktop` 或 `web` profile，重启 Harness 后完成一轮对话，并确认未同时启用旧版 `@local/deepseek-cost-meter`。
+- **显示“不完整”或没有金额：** 检查该轮是否有 usage、provider/model 是否有对应价格，以及记录时间是否在价格和日历覆盖范围内。缺失数据不会按零费用处理。
+- **与账户扣费不同：** 本插件按已记录 usage 和配置价格估算模型费用，不读取账户账单；优惠、其他工具费用及独立子会话等不在该金额中。
 
 ## 开发与验证
 

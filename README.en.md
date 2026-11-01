@@ -3,6 +3,11 @@
 English · [简体中文](README.md)
 
 [![CI](https://github.com/luomuwen/deepseek-cost-meter/actions/workflows/ci.yml/badge.svg)](https://github.com/luomuwen/deepseek-cost-meter/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/deepseek-cost-meter)](https://www.npmjs.com/package/deepseek-cost-meter)
+[![npm downloads](https://img.shields.io/npm/dm/deepseek-cost-meter)](https://www.npmjs.com/package/deepseek-cost-meter)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+[npm package](https://www.npmjs.com/package/deepseek-cost-meter) · [dsh market](https://awesome-dsh-plugin.com/p/luomuwen/deepseek-cost-meter/) · [Releases](https://github.com/luomuwen/deepseek-cost-meter/releases) · [Issues](https://github.com/luomuwen/deepseek-cost-meter/issues)
 
 An independent MIT-licensed community plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Show estimated model costs after each conversation turn, with expandable token, price and session-total details. Not affiliated with or endorsed by DeepSeek.
 
@@ -17,15 +22,32 @@ The example uses the bundled peak rate for deepseek-v4-pro. Amounts are estimate
 
 ## Install
 
-Recommended npm installation:
+Requires an existing DeepSeek Harness installation. Tested with Desktop **0.2.1-rc.3 on macOS**; other versions and platforms are unverified. No API key or additional model requests are needed.
+
+Install the npm package into the Desktop profile:
 
 ```sh
 dsh plugin --profile desktop add deepseek-cost-meter
-# Web profile:
-dsh plugin --profile web add deepseek-cost-meter
 ```
 
-On macOS without a global `dsh`, use `/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`.
+On macOS, if `dsh` is not on PATH, use the bundled CLI:
+
+```sh
+"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
+  plugin --profile desktop add deepseek-cost-meter
+```
+
+For Web, run `dsh plugin --profile web add deepseek-cost-meter`. Restart the corresponding Harness app or Web service, then complete a conversation turn to see its cost below the reply.
+
+The market display name is **DeepSeek Cost Meter（每轮费用）**; the npm package is **`deepseek-cost-meter`**. The market discovers npm packages through scheduled syncs. If it still shows an older archive, use the npm command above.
+
+### Update the npm installation
+
+```sh
+dsh plugin --profile desktop add deepseek-cost-meter@latest
+```
+
+Restart Harness afterward. Web users should use `--profile web`. To check the installed version, run `dsh plugin --profile desktop list --depth 0`.
 
 ### Upgrade from 0.1.0
 
@@ -78,9 +100,23 @@ The bundled CNY tariff was checked on **2026-10-29** against [DeepSeek's officia
 
 Prices are per million tokens. Official `deepseek`, `deepseek-official` and `deepseek-account` routes are supported. Unrecognized providers do not inherit official prices. Cache writes default to the uncached-input rate. Peak requests are approximated using the step/retry start timestamp in UTC+8.
 
-Edit `rates.json` and restart, or supply the complete same-shaped object under the plugin's `config.rates`. Decimal prices must be strings with up to six fractional digits. Omit `peak` for flat pricing. See the [Chinese configuration guide](README.md#修改价格) and [architecture](docs/architecture.md) for the full contract.
+Prefer supplying the complete same-shaped object under the plugin's `config.rates`, so package updates do not overwrite edits to installed files. Source developers can also edit `rates.json`. Restart Harness after changes. Decimal prices must be strings with up to six fractional digits. Omit `peak` for flat pricing. See the [Chinese configuration guide](README.md#修改价格) and [architecture](docs/architecture.md) for the full contract.
 
 Rate changes append immutable snapshots to Harness storage. The initial snapshot starts at `effectiveFrom`; later changes take effect when loaded. Old calls use their saved price history. Losing that history prevents exact reconstruction: this is not an accounting ledger.
+
+## Download statistics
+
+- The [npm package page](https://www.npmjs.com/package/deepseek-cost-meter) shows versions and downloads. The badge above shows npm downloads over the last month.
+- Use the [last-week JSON endpoint](https://api.npmjs.org/downloads/point/last-week/deepseek-cost-meter) or [last-month JSON endpoint](https://api.npmjs.org/downloads/point/last-month/deepseek-cost-meter) for your own reporting.
+- [GitHub Release](https://github.com/luomuwen/deepseek-cost-meter/releases) asset downloads are counted separately. npm downloads are not unique users or active installations: CI, repeat installs and caching affect the totals.
+
+The plugin does not upload usage telemetry. Download statistics and market metadata may take time to appear after publication.
+
+## Troubleshooting
+
+- **No cost row after installation:** check the active `desktop` or `web` profile, restart Harness and complete a turn. Do not enable the old `@local/deepseek-cost-meter` package alongside this one.
+- **Incomplete or missing amount:** check recorded usage, provider/model prices, and the tariff and calendar coverage for the request date. Missing data is not treated as zero cost.
+- **Different from account billing:** costs use recorded usage and configured model prices. Account discounts, other tool fees and independent subagent sessions are excluded.
 
 ## Development
 
