@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Config } from '../index.js';
 import { createProjection, stateSchema } from '../src/projection.js';
@@ -30,9 +31,9 @@ function replay(calls, { catalog: history = catalog, inherited = 0 } = {}) {
 }
 function render(view, lang = 'zh') {
   const dict = JSON.parse(readFileSync(new URL('../locale/' + lang + '.json', import.meta.url)));
-  const browser = clientFactory(name => { assert.equal(name, 'react'); return React; }, { [lang]: dict });
+  const browser = clientFactory(name => { assert.ok(['react', 'react-dom'].includes(name)); return name === 'react' ? React : ReactDOM; }, { [lang]: dict });
   let Component;
-  browser.apply({ effect() {}, slots: { inject(_name, fn) { fn(); }, register(_options, C) { Component = C; } } });
+  browser.apply({ effect() {}, slots: { inject(_name, fn) { fn(); }, register(options, C) { if (options.name === 'conversation.chat.turnTail') Component = C; } } });
   return renderToStaticMarkup(React.createElement(Component, { turn: { turn: 1 }, useProjection: () => view,
     t: (key, vars = {}) => { assert.ok(dict[key], `Missing locale: ${key}`); return dict[key].replace(/\{(\w+)\}/g, (_, key) => String(vars[key])); } }));
 }

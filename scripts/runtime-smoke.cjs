@@ -82,14 +82,18 @@ const assert = require('node:assert/strict');
     assert.equal(registration.id, manifest.name);
     const browser = registration.factory(testRequire);
     const cleanups = [];
-    let Component, registered = 0;
+    let Component, Dock, registered = 0;
     global.document = { createElement: () => ({ dataset: {}, remove() { registered--; } }), head: { appendChild() { registered++; } } };
     sandbox.document = global.document;
     browser.apply({
       effect(fn) { cleanups.push(fn()); },
       locale: { register() { return () => {}; } },
-      slots: { inject(name, fn) { assert.equal(name, 'conversation.chat.turnTail'); cleanups.push(fn()); },
-        register(options, C) { Component = C; return () => { Component = null; }; } },
+      slots: { inject(name, fn) { assert.ok(['conversation.chat.turnTail', 'conversation.composer.dock'].includes(name)); cleanups.push(fn()); },
+        register(options, C) {
+          if (options.name === 'conversation.chat.turnTail') { Component = C; return () => { Component = null; }; }
+          assert.equal(options.order, 2);
+          Dock = C; return () => { Dock = null; };
+        } },
     });
     const React = testRequire('react');
     const { renderToStaticMarkup } = testRequire('react-dom/server');
@@ -103,15 +107,21 @@ const assert = require('node:assert/strict');
     assert.match(mixedHtml, /套餐/);
     assert.match(mixedHtml, /缓存写入/);
     assert.match(mixedHtml, /unknown-provider/);
+    const dockHtml = renderToStaticMarkup(React.createElement(Dock, { sessionId: 'synthetic',
+      useProjection: () => mixed, useSession: select => select({ running: false }), t }));
+    assert.match(dockHtml, /data-composer-stat="cost-meter"/);
+    assert.match(dockHtml, /CNY 0.0354/);
+    assert.match(dockHtml, /已知费用/);
     for (const cleanup of cleanups.reverse()) if (cleanup) cleanup();
     assert.equal(registered, 0);
     assert.equal(Component, null);
+    assert.equal(Dock, null);
     await upgraded.dispose();
     assert.equal(ctx.sessionProjections.snapshot(session).values.localTurnCost, undefined);
     const reloaded = ctx.plugin(plugin, upgradeConfig);
     await reloaded;
     assert.deepEqual(ctx.sessionProjections.snapshot(session).values.localTurnCost, mixed);
-    console.log('PASS: real Harness services, catalog upgrade, mixed providers, partial prices, session replay, React rendering, unload/reload.');
+    console.log('PASS: real Harness services, catalog upgrade, mixed providers, partial prices, session replay, turn-tail and composer-dock rendering, unload/reload.');
   } finally {
     await ctx.fiber.dispose();
     await fs.rm(root, { recursive: true, force: true });

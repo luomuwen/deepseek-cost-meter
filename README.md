@@ -13,9 +13,11 @@
 
 在每轮回复下方显示 **本轮模型费用约 CNY 0.012300 · 1 次调用**。点击展开模型、token、单价、峰谷时段及累计费用。支持正常完成、错误和中断轮次。
 
+**0.3.0 新增底栏费用入口：** 输入框下方直接展示当前会话的累计费用估算。点击后查看最近完成一轮、各渠道/模型费用、调用次数与已记录 token。与原生会话统计并列显示，不替换原有控件。
+
 **0.2.0 新增多渠道支持：** DeepSeek、Kimi 国内 API、部分 MiniMax 模型可估算金额；千问 Token Plan、Kimi Coding、智谱 Coding 等套餐显示用量。其他模型只要 dsh 保存了 usage，也能展示已记录 token，并可单独补充价格。插件沿用 dsh 的模型配置，不负责接入或切换模型。
 
-兼容性：0.2.0 已在 macOS 桌面版 **DeepSeek Harness 0.2.1-rc.5** 的真实运行时中验证。使用 `sessionProjections`、`storageDomain`、`conversation.chat.turnTail` 和 `useProjection`；其他版本需要重新验证。
+兼容性：0.3.0 已在 macOS 桌面版 **DeepSeek Harness 0.2.1-rc.5** 的真实运行时中验证。使用 `sessionProjections`、`storageDomain`、`conversation.chat.turnTail`、`conversation.composer.dock` 和 `useProjection`；其他版本需要重新验证。
 
 | dsh 渠道 | 0.2.0 行为 |
 |---|---|
@@ -93,10 +95,19 @@ macOS 桌面版若没有全局 `dsh`，使用 `/Applications/DeepSeek Harness.ap
 也可以从 [Releases](https://github.com/luomuwen/deepseek-cost-meter/releases) 下载 `.tgz` 安装包：
 
 ```sh
-dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.2.0.tgz
+dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.3.0.tgz
 ```
 
 运行 `npm pack` 可自行打包。运行依赖 zod 随包分发；React 由 Harness 提供。npm 包名为 `deepseek-cost-meter`，公开发布到 npm registry；市场展示名保持“DeepSeek Cost Meter（每轮费用）”。
+
+## 底栏会话费用
+
+- 输入框下方新增“费用约 CNY …”；存在未计价或套餐调用时显示“已知费用约 …”，全套餐会话显示“套餐用量”。
+- 点击打开费用弹窗，查看本会话累计、最近完成一轮，以及按渠道/模型汇总的金额、调用次数和已记录 token。
+- 与每轮费用复用同一份投影结果；每轮结束后更新。生成过程中提示“本轮进行中，尚未计入”，不会把未完成请求显示成实时账单。
+- 多币种分别列出；分叉继承历史不重复计入。底栏金额显示四位小数，详情保留六位，小额不会因四舍五入显示成免费。
+- 按 Esc、点击关闭按钮或点击外部关闭；切换会话自动关闭旧弹窗。支持深浅主题和窄窗口。
+- 原生“会话统计”弹窗与每轮费用栏继续保留。插件不读取账户余额，也不增加模型请求。
 
 ## 计费口径
 

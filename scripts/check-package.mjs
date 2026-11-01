@@ -14,6 +14,7 @@ try {
     assert.ok(files.has(file), `Package missing ${file}`);
   }
   assert.ok(![...files].some(file => file.startsWith('node_modules/react/')), 'Harness supplies React');
+  assert.ok(![...files].some(file => /node_modules\/(react-dom|jsdom)\//.test(file)), 'ReactDOM is shared and jsdom is test-only');
   assert.ok(![...files].some(file => /(^|\/)(\.env|\.git)(\/|$)/.test(file)), 'No private files in package');
   assert.ok(![...files].some(file => file.startsWith('docs/') && !['docs/architecture.md', 'docs/providers.md'].includes(file)), 'Research drafts are not runtime documentation');
   console.log('PASS: distributable includes runtime files and bundled Zod, without a second React.');

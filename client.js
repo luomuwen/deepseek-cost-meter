@@ -2,9 +2,10 @@
 window.__ModuleLoader__.load({
   id: "deepseek-cost-meter",
   factory(require) {
-/** Browser factory: only React is shared with the host. Generated artifact embeds dictionaries. */
+/** Browser factory: React and ReactDOM are shared with the host. */
 function clientFactory(require, dictionaries) {
   const React = require('react');
+  const { createPortal } = require('react-dom');
   const h = React.createElement;
   const ns = 'local-turn-cost';
   const css = `
@@ -20,17 +21,161 @@ function clientFactory(require, dictionaries) {
     .dsh-cost-meter th, .dsh-cost-meter td { padding: 4px 8px; text-align: right; white-space: nowrap; }
     .dsh-cost-meter th:first-child, .dsh-cost-meter td:first-child { text-align: left; padding-left: 0; }
     .dsh-cost-meter .cost-amount { font-variant-numeric: tabular-nums; }
+    .dsh-cost-dock { display: inline-flex; min-width: 0; max-width: 100%; font-size: calc(var(--dsh-content-font-size-secondary, 13px) - 1px); }
+    .dsh-cost-dock-button { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; padding: 1px 8px; border: 0; border-radius: var(--dsw-radius-sm, 6px); background: transparent; color: var(--dsw-alias-label-tertiary, #666); font: inherit; line-height: 20px; cursor: pointer; }
+    .dsh-cost-dock-button:hover, .dsh-cost-dock-button[aria-expanded=true] { background: var(--dsw-alias-interactive-bg-hover, #eee); color: var(--dsw-alias-label-secondary, #555); }
+    .dsh-cost-dock-button svg { flex: none; width: 14px; height: 14px; }
+    .dsh-cost-dock-button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .dsh-cost-dock-button:focus-visible, .dsh-cost-dialog button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+    .dsh-cost-dialog { position: fixed; z-index: 1100; box-sizing: border-box; width: 360px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; padding: 16px; border: 1px solid var(--dsw-alias-border-primary, #ddd); border-radius: var(--dsw-radius-lg, 16px); background: var(--dsw-specific-menu, #fff); backdrop-filter: var(--dsw-menu-backdrop-filter); box-shadow: var(--dsw-elevation-prominent, 0 8px 32px #0002); color: var(--dsw-alias-label-secondary, #555); font-size: 12px; line-height: 1.6; }
+    .dsh-cost-dialog:focus { outline: none; }
+    .dsh-cost-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--dsw-alias-border-primary, #ddd); color: var(--dsw-alias-label-primary, #222); }
+    .dsh-cost-dialog-header button { border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; cursor: pointer; padding: 2px 6px; }
+    .dsh-cost-dialog dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 16px; margin: 12px 0; }
+    .dsh-cost-dialog dt, .dsh-cost-dialog dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+    .dsh-cost-dialog dd { text-align: right; font-variant-numeric: tabular-nums; }
+    .dsh-cost-dialog small { display: block; color: var(--dsw-alias-label-tertiary, #777); font-weight: normal; }
+    .dsh-cost-dialog .cost-note { color: var(--dsw-alias-label-tertiary, #777); margin: 8px 0 0; }
+    .dsh-cost-dialog .cost-breakdown { border-top: 1px solid var(--dsw-alias-border-primary, #ddd); padding-top: 12px; }
+    @media (max-width: 480px) { .dsh-cost-dock { max-width: 180px; } }
   `;
 
-  function money(pico, currency) {
+  function money(pico, currency, digits = 6) {
     const n = BigInt(pico);
-    const rounded = (n + 500_000n) / 1_000_000n;
-    const whole = rounded / 1_000_000n;
-    const part = (rounded % 1_000_000n).toString().padStart(6, '0');
-    return `${currency} ${n > 0n && rounded === 0n ? '<0.000001' : `${whole}.${part}`}`;
+    const scale = 10n ** BigInt(digits);
+    const unit = 1_000_000_000_000n / scale;
+    const rounded = (n + unit / 2n) / unit;
+    const whole = rounded / scale;
+    const part = (rounded % scale).toString().padStart(digits, '0');
+    return `${currency} ${n > 0n && rounded === 0n ? `<0.${'0'.repeat(digits - 1)}1` : `${whole}.${part}`}`;
   }
-  function amounts(totals) {
-    return Object.entries(totals).map(([currency, value]) => money(value, currency)).join(' + ');
+  function amounts(totals, digits = 6) {
+    return Object.entries(totals).map(([currency, value]) => money(value, currency, digits)).join(' + ');
+  }
+  /** Aggregate only newly settled turns; inherited history is already excluded from totals. */
+  function summarizeSession(data) {
+    const groups = new Map();
+    let latest = null;
+    for (const turn of Object.values(data?.turns ?? {})) {
+      if (turn.inherited || turn.endSeq === undefined) continue;
+      if (!latest || turn.endSeq > latest.endSeq) latest = turn;
+      for (const row of turn.lines) {
+        const key = JSON.stringify([row.provider, row.model, row.billingMode, row.currency]);
+        const group = groups.get(key) ?? { key, provider: row.provider, model: row.model,
+          billingMode: row.billingMode, currency: row.currency, amount: 0n, hasAmount: false,
+          incomplete: false, calls: 0, tokens: 0n, hasTokens: false };
+        group.calls += row.calls;
+        group.hasAmount ||= row.hasAmount;
+        if (row.hasAmount) group.amount += BigInt(row.amountPico);
+        group.incomplete ||= row.billingMode === 'metered' && Boolean(row.issue);
+        for (const value of Object.values(row.usage ?? {})) if (value !== null) {
+          group.tokens += BigInt(value);
+          group.hasTokens = true;
+        }
+        groups.set(key, group);
+      }
+    }
+    return { latest, groups: [...groups.values()] };
+  }
+  function CostDock(props) {
+    // A different session must never retain an open dialog from the previous one.
+    return h(SessionCostDock, { ...props, key: props.sessionId });
+  }
+  function SessionCostDock({ useProjection, useSession, t }) {
+    const data = useProjection('localTurnCost');
+    const running = useSession(state => state.running);
+    const summary = React.useMemo(() => summarizeSession(data), [data]);
+    const [open, setOpen] = React.useState(false);
+    const [position, setPosition] = React.useState(null);
+    const root = React.useRef(null);
+    const panel = React.useRef(null);
+    const button = React.useRef(null);
+    const panelId = React.useId();
+    const close = (restoreFocus = false) => {
+      setOpen(false);
+      if (restoreFocus) button.current?.focus({ preventScroll: true });
+    };
+    React.useEffect(() => {
+      if (!open) return;
+      const place = () => {
+        if (!root.current || !panel.current) return;
+        const anchor = root.current.getBoundingClientRect();
+        const box = panel.current.getBoundingClientRect();
+        const left = Math.max(12, Math.min(anchor.left, window.innerWidth - box.width - 12));
+        const above = anchor.top - box.height - 8;
+        const top = above >= 12 ? above : Math.max(12, Math.min(anchor.bottom + 8, window.innerHeight - box.height - 12));
+        setPosition({ left, top });
+      };
+      const outside = event => {
+        if (root.current?.contains(event.target) || panel.current?.contains(event.target)) return;
+        setOpen(false);
+      };
+      const escape = event => {
+        if (event.key !== 'Escape') return;
+        setOpen(false);
+        button.current?.focus({ preventScroll: true });
+      };
+      place();
+      panel.current?.focus({ preventScroll: true });
+      document.addEventListener('pointerdown', outside, true);
+      document.addEventListener('click', outside, true);
+      document.addEventListener('focusin', outside);
+      document.addEventListener('keydown', escape);
+      window.addEventListener('resize', place);
+      window.addEventListener('scroll', place, true);
+      const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place);
+      if (panel.current) observer?.observe(panel.current);
+      if (root.current) observer?.observe(root.current);
+      return () => {
+        observer?.disconnect();
+        document.removeEventListener('pointerdown', outside, true);
+        document.removeEventListener('click', outside, true);
+        document.removeEventListener('focusin', outside);
+        document.removeEventListener('keydown', escape);
+        window.removeEventListener('resize', place);
+        window.removeEventListener('scroll', place, true);
+      };
+    }, [open]);
+    const allPlans = summary.groups.length > 0 && summary.groups.every(row => row.billingMode === 'subscription');
+    const hasMetered = summary.groups.some(row => row.billingMode === 'metered');
+    const amountLabel = (totals, partial, fallback, digits = 6) => {
+      const value = amounts(totals ?? {}, digits);
+      return value ? t(partial ? 'dockKnown' : 'dockEstimate', { amount: value }) : t(fallback);
+    };
+    const fallback = !data ? 'waiting' : allPlans ? 'dockPlan' : hasMetered ? 'dockUnavailable' : summary.groups.length ? 'dockUsageOnly' : 'dockEmpty';
+    const title = amountLabel(data?.totals, data?.unknown || data?.unpriced, fallback, 4);
+    const latest = summary.latest;
+    const latestPlans = latest?.lines.length > 0 && latest.lines.every(row => row.billingMode === 'subscription');
+    const latestLabel = latest ? amountLabel(latest.totals, latest.unknown || latest.unpriced,
+      latest.calls === 0 ? 'zero' : latestPlans ? 'dockPlan' : latest.lines.some(row => row.billingMode === 'metered') ? 'dockUnavailable' : 'dockUsageOnly') : t('dockEmpty');
+    const note = text => h('p', { className: 'cost-note' }, text);
+    return h('span', { ref: root, className: 'dsh-cost-dock', 'data-composer-stat': 'cost-meter' },
+      h('button', { ref: button, type: 'button', className: 'dsh-cost-dock-button',
+        title: `${t('dockTitle')} · ${title}`, 'aria-label': `${t('dockTitle')} · ${title}`,
+        'aria-haspopup': 'dialog', 'aria-expanded': open, 'aria-controls': open ? panelId : undefined,
+        onClick: () => { setPosition(null); setOpen(value => !value); } },
+      h('svg', { viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', 'aria-hidden': true },
+        h('circle', { cx: 8, cy: 8, r: 6.25 }), h('path', { d: 'M5 5l3 3 3-3M5 8h6M5 10h6M8 8v4' })),
+      h('span', null, title)),
+      open && createPortal(h('div', { ref: panel, id: panelId, role: 'dialog', tabIndex: -1,
+        className: 'dsh-cost-dialog', 'aria-label': t('dockTitle'),
+        style: position ?? { left: 0, top: 0, visibility: 'hidden' } },
+        h('div', { className: 'dsh-cost-dialog-header' }, h('strong', null, t('dockTitle')),
+          h('button', { type: 'button', 'aria-label': t('dockClose'), onClick: () => close(true) }, '×')),
+        h('dl', null,
+          h('dt', null, t('dockTotal')), h('dd', null, amountLabel(data?.totals, data?.unknown || data?.unpriced, fallback)),
+          h('dt', null, t('dockLatest')), h('dd', null, latestLabel)),
+        summary.groups.length > 0 && h('dl', { className: 'cost-breakdown' }, ...summary.groups.map(row =>
+          h(React.Fragment, { key: row.key },
+            h('dt', null, row.model, h('small', null, row.provider),
+              h('small', null, t('calls', { count: row.calls }))),
+            h('dd', null, row.hasAmount ? t(row.incomplete ? 'dockKnown' : 'dockEstimate', { amount: money(row.amount, row.currency) })
+              : t(row.billingMode === 'subscription' ? 'dockPlan' : row.billingMode === 'usage-only' ? 'dockUsageOnly' : 'dockUnavailable'),
+              row.hasTokens && h('small', null, t('recordedTokens', { count: row.tokens.toLocaleString() })))))),
+        data?.unknown > 0 && note(t('missing', { count: data.unknown })),
+        data?.unpriced > 0 && note(t('unpriced', { count: data.unpriced })),
+        note(t(running ? 'dockRunning' : 'dockSettled')),
+        note(t('dockScope'))), document.body));
   }
   function CostTail({ turn, useProjection, t }) {
     const data = useProjection('localTurnCost');
@@ -84,10 +229,13 @@ function clientFactory(require, dictionaries) {
       ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
         name: 'conversation.chat.turnTail', id: 'local-deepseek-cost-meter', locale: ns, order: 30,
       }, CostTail));
+      ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
+        name: 'conversation.composer.dock', id: 'local-deepseek-cost-meter', locale: ns, order: 2,
+      }, CostDock));
     },
   };
 }
 
-    return clientFactory(require, {"en":{"meta":{"title":"Turn costs","description":"Show estimated model cost, request counts and token pricing below each completed turn."},"summary":"Estimated model cost: {amount}","partial":"Known model cost: {amount}","unavailable":"Usage tracking; complete cost unavailable","zero":"No model calls this turn","calls":"{count} calls","missing":"{count} calls have incomplete billing data","inherited":"Inherited history; excluded from new spending in this branch","scope":"Model requests in this session only. Subagents, title generation and tool charges are excluded. Estimates use API usage and configured prices; the provider invoice is authoritative.","timeRule":"Estimates use the actual provider and configured rates. Unknown rates are not zero. Peak rates use request start time.","history":"Historical replay uses saved price snapshots. New routes are priced only from their coverage start.","session":"New session model cost through this turn: {amount}","input":"Uncached input","cacheRead":"Cache reads","cacheWrite":"Cache writes","output":"Output (including reasoning)","tokens":"Tokens","price":"Rate / 1M tokens","subtotal":"Estimated cost","peak":"Peak","offPeak":"Off-peak","version":"Price version","usage-unavailable":"Usage missing or incomplete","price-unavailable":"No applicable price","calendar-expired":"Peak calendar needs updating","waiting":"Loading cost estimate","unknown":"Unknown","sessionPartial":"Some calls are missing from this subtotal.","subscriptionSummary":"Plan usage (no per-call charge estimate)","recordedTokens":"{count} recorded tokens","unpriced":"{count} plan or usage-only calls are excluded from monetary totals.","subscription":"Plan/quota route: usage is shown without treating public API prices as account charges.","usage-only":"Usage-only route; no monetary cost is calculated.","price-incomplete":"Some rates are unknown. Only the known subtotal is shown.","missingPrices":"Unpriced dimensions: {buckets}","knownSubtotal":"Known cost subtotal","source":"Price source","flat":"Flat rate"},"zh":{"meta":{"title":"每轮费用","description":"在每轮回复下方显示模型费用估算、调用次数和 token 计费明细。"},"summary":"本轮模型费用约 {amount}","partial":"本轮已知模型费用约 {amount}","unavailable":"本轮费用暂无法完整估算","zero":"本轮没有模型调用","calls":"{count} 次调用","missing":"{count} 次调用缺少完整计费数据","inherited":"继承自原会话，不计入本分支新增费用","scope":"仅统计本会话模型请求，不含子 Agent、标题生成及工具费用。金额按 API 用量与单价估算，以服务商账单为准。","timeRule":"按实际提供商与配置单价估算；未知单价不按零处理。峰谷价按请求开始时间判断。","history":"价格快照用于历史回放；新渠道仅从其价格覆盖时间开始估算。","session":"本会话新增模型费用（截至本轮）约 {amount}","input":"未缓存输入","cacheRead":"缓存读取","cacheWrite":"缓存写入","output":"输出（含推理）","tokens":"Token 数","price":"单价 / 百万 token","subtotal":"费用估算","peak":"高峰时段","offPeak":"空闲时段","version":"价格版本","usage-unavailable":"用量缺失或不完整","price-unavailable":"缺少适用价格","calendar-expired":"峰谷日历需要更新","waiting":"费用统计正在加载","unknown":"未知","sessionPartial":"累计中有未能计价的调用。","subscriptionSummary":"本轮套餐用量（不估算按次扣费）","recordedTokens":"已记录 {count} tokens","unpriced":"{count} 次套餐或仅统计用量的调用未计入金额。","subscription":"套餐/额度渠道：展示用量，不将公开 API 价格当作实际扣款。","usage-only":"此渠道仅统计用量，未计算费用。","price-incomplete":"部分费用缺少确定单价，以下仅为已知小计。","missingPrices":"未计价项目：{buckets}","knownSubtotal":"已知费用小计","source":"价格来源","flat":"固定单价"}});
+    return clientFactory(require, {"en":{"meta":{"title":"Turn costs","description":"Show estimated model cost, request counts and token pricing below each completed turn."},"summary":"Estimated model cost: {amount}","partial":"Known model cost: {amount}","unavailable":"Usage tracking; complete cost unavailable","zero":"No model calls this turn","calls":"{count} calls","missing":"{count} calls have incomplete billing data","inherited":"Inherited history; excluded from new spending in this branch","scope":"Model requests in this session only. Subagents, title generation and tool charges are excluded. Estimates use API usage and configured prices; the provider invoice is authoritative.","timeRule":"Estimates use the actual provider and configured rates. Unknown rates are not zero. Peak rates use request start time.","history":"Historical replay uses saved price snapshots. New routes are priced only from their coverage start.","session":"New session model cost through this turn: {amount}","input":"Uncached input","cacheRead":"Cache reads","cacheWrite":"Cache writes","output":"Output (including reasoning)","tokens":"Tokens","price":"Rate / 1M tokens","subtotal":"Estimated cost","peak":"Peak","offPeak":"Off-peak","version":"Price version","usage-unavailable":"Usage missing or incomplete","price-unavailable":"No applicable price","calendar-expired":"Peak calendar needs updating","waiting":"Loading cost estimate","unknown":"Unknown","sessionPartial":"Some calls are missing from this subtotal.","subscriptionSummary":"Plan usage (no per-call charge estimate)","recordedTokens":"{count} recorded tokens","unpriced":"{count} plan or usage-only calls are excluded from monetary totals.","subscription":"Plan/quota route: usage is shown without treating public API prices as account charges.","usage-only":"Usage-only route; no monetary cost is calculated.","price-incomplete":"Some rates are unknown. Only the known subtotal is shown.","missingPrices":"Unpriced dimensions: {buckets}","knownSubtotal":"Known cost subtotal","source":"Price source","flat":"Flat rate","dockTitle":"Session costs","dockEstimate":"Est. {amount}","dockKnown":"Known cost ≈ {amount}","dockTotal":"Session estimate","dockLatest":"Latest completed turn","dockPlan":"Plan usage","dockUsageOnly":"Usage only","dockUnavailable":"Cost unavailable","dockEmpty":"Cost · No completed calls","dockClose":"Close cost details","dockRunning":"Current turn is running and not included; amounts cover completed turns only.","dockSettled":"Updated after each turn ends, including failed and interrupted turns.","dockScope":"New model calls in this session only. Inherited fork history, independent child sessions and tool fees are excluded. Amounts are estimates; provider billing takes precedence."},"zh":{"meta":{"title":"每轮费用","description":"在每轮回复下方显示模型费用估算、调用次数和 token 计费明细。"},"summary":"本轮模型费用约 {amount}","partial":"本轮已知模型费用约 {amount}","unavailable":"本轮费用暂无法完整估算","zero":"本轮没有模型调用","calls":"{count} 次调用","missing":"{count} 次调用缺少完整计费数据","inherited":"继承自原会话，不计入本分支新增费用","scope":"仅统计本会话模型请求，不含子 Agent、标题生成及工具费用。金额按 API 用量与单价估算，以服务商账单为准。","timeRule":"按实际提供商与配置单价估算；未知单价不按零处理。峰谷价按请求开始时间判断。","history":"价格快照用于历史回放；新渠道仅从其价格覆盖时间开始估算。","session":"本会话新增模型费用（截至本轮）约 {amount}","input":"未缓存输入","cacheRead":"缓存读取","cacheWrite":"缓存写入","output":"输出（含推理）","tokens":"Token 数","price":"单价 / 百万 token","subtotal":"费用估算","peak":"高峰时段","offPeak":"空闲时段","version":"价格版本","usage-unavailable":"用量缺失或不完整","price-unavailable":"缺少适用价格","calendar-expired":"峰谷日历需要更新","waiting":"费用统计正在加载","unknown":"未知","sessionPartial":"累计中有未能计价的调用。","subscriptionSummary":"本轮套餐用量（不估算按次扣费）","recordedTokens":"已记录 {count} tokens","unpriced":"{count} 次套餐或仅统计用量的调用未计入金额。","subscription":"套餐/额度渠道：展示用量，不将公开 API 价格当作实际扣款。","usage-only":"此渠道仅统计用量，未计算费用。","price-incomplete":"部分费用缺少确定单价，以下仅为已知小计。","missingPrices":"未计价项目：{buckets}","knownSubtotal":"已知费用小计","source":"价格来源","flat":"固定单价","dockTitle":"会话费用","dockEstimate":"费用约 {amount}","dockKnown":"已知费用约 {amount}","dockTotal":"本会话累计估算","dockLatest":"最近完成一轮","dockPlan":"套餐用量","dockUsageOnly":"仅统计用量","dockUnavailable":"费用待估算","dockEmpty":"费用 · 暂无已完成调用","dockClose":"关闭费用详情","dockRunning":"本轮进行中，尚未计入；金额截至最近完成的一轮。","dockSettled":"每轮结束后更新，包含正常完成、失败及中断的轮次。","dockScope":"仅统计本会话新增模型调用；不重复计入分叉继承历史，不含独立子会话和工具费用。金额为估算，以账单为准。"}});
   },
 });
