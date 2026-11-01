@@ -43,6 +43,35 @@ const assert = require('node:assert/strict');
     assert.equal(snapshot.turns[1].unknown, 0);
     assert.equal(snapshot.totals.CNY, '1440000000');
 
+    // Upgrade a persisted catalog, then replay mixed metered/plan/unknown routes.
+    await fiber.dispose();
+    const upgradeConfig = { ...config,
+      providerModes: { 'kimi-coding': 'subscription' },
+      additionalRates: [{ provider: 'moonshotai-cn', models: ['kimi-k3'], currency: 'CNY',
+        effectiveFrom: '2000-01-01T00:00:00Z', source: 'integration fixture, not a live API request',
+        offPeak: { input: '20', cacheRead: '2', cacheWrite: null, output: '100' } }] };
+    const upgraded = ctx.plugin(plugin, upgradeConfig);
+    await upgraded;
+    session.append('turn/start', { turn: 2 });
+    for (const [index, provider] of ['moonshotai-cn', 'kimi-coding', 'unknown-provider'].entries()) {
+      const step = index + 1;
+      const mixedUsage = { ...usage, cacheWriteTokens: 50, totalTokens: 3150 };
+      session.append('step/start', { turn: 2, step });
+      session.append('request/header', { reason: 'initial', header: { config: { provider, model: 'kimi-k3' } } });
+      session.append('assistant/message', { turn: 2, step, usage: mixedUsage,
+        message: { id: `mixed-${step}`, role: 'assistant', source: { kind: 'model', provider, model: 'kimi-k3' },
+          content: [{ type: 'text', text: 'Synthetic multi-provider fixture.' }] }, stream: [] }, { surfaceOp: 'append' });
+      session.append('step/end', { turn: 2, step });
+    }
+    session.append('turn/end', { turn: 2, reason: { kind: 'completed' } });
+    const mixed = ctx.sessionProjections.snapshot(session).values.localTurnCost;
+    assert.deepEqual(mixed.turns[1], snapshot.turns[1]);
+    assert.equal(mixed.turns[2].calls, 3);
+    assert.equal(mixed.turns[2].unpriced, 1);
+    assert.equal(mixed.turns[2].unknown, 2);
+    assert.equal(mixed.turns[2].totals.CNY, '34000000000');
+    assert.deepEqual(mixed.turns[2].lines[0].missingPrices, ['cacheWrite']);
+
     const dictionaries = Object.fromEntries(await Promise.all(['zh', 'en'].map(async lang => [lang,
       JSON.parse(await fs.readFile(path.join(pluginRoot, 'locale', lang + '.json'), 'utf8'))])));
     const testRequire = createRequire(path.join(path.resolve(__dirname, '..'), 'package.json'));
@@ -69,15 +98,20 @@ const assert = require('node:assert/strict');
     assert.match(html, /本轮模型费用约 CNY/);
     assert.match(html, /未缓存输入/);
     assert.match(html, /deepseek-v4-pro/);
+    const mixedHtml = renderToStaticMarkup(React.createElement(Component, { turn: { turn: 2 }, useProjection: () => mixed, t }));
+    assert.match(mixedHtml, /0.034000/);
+    assert.match(mixedHtml, /套餐/);
+    assert.match(mixedHtml, /缓存写入/);
+    assert.match(mixedHtml, /unknown-provider/);
     for (const cleanup of cleanups.reverse()) if (cleanup) cleanup();
     assert.equal(registered, 0);
     assert.equal(Component, null);
-    await fiber.dispose();
+    await upgraded.dispose();
     assert.equal(ctx.sessionProjections.snapshot(session).values.localTurnCost, undefined);
-    const reloaded = ctx.plugin(plugin, config);
+    const reloaded = ctx.plugin(plugin, upgradeConfig);
     await reloaded;
-    assert.deepEqual(ctx.sessionProjections.snapshot(session).values.localTurnCost, snapshot);
-    console.log('PASS: real Harness services, durable rate catalog, session replay, React rendering, unload/reload.');
+    assert.deepEqual(ctx.sessionProjections.snapshot(session).values.localTurnCost, mixed);
+    console.log('PASS: real Harness services, catalog upgrade, mixed providers, partial prices, session replay, React rendering, unload/reload.');
   } finally {
     await ctx.fiber.dispose();
     await fs.rm(root, { recursive: true, force: true });

@@ -13,7 +13,19 @@
 
 在每轮回复下方显示 **本轮模型费用约 CNY 0.012300 · 1 次调用**。点击展开模型、token、单价、峰谷时段及累计费用。支持正常完成、错误和中断轮次。
 
-兼容性：已在 macOS 桌面版 **DeepSeek Harness 0.2.1-rc.3** 验证。使用 `sessionProjections`、`storageDomain`、`conversation.chat.turnTail` 和 `useProjection`；其他版本需要重新验证。
+**0.2.0 新增多渠道支持：** DeepSeek、Kimi 国内 API、部分 MiniMax 模型可估算金额；千问 Token Plan、Kimi Coding、智谱 Coding 等套餐显示用量。其他模型只要 dsh 保存了 usage，也能展示已记录 token，并可单独补充价格。插件沿用 dsh 的模型配置，不负责接入或切换模型。
+
+兼容性：0.2.0 已在 macOS 桌面版 **DeepSeek Harness 0.2.1-rc.5** 的真实运行时中验证。使用 `sessionProjections`、`storageDomain`、`conversation.chat.turnTail` 和 `useProjection`；其他版本需要重新验证。
+
+| dsh 渠道 | 0.2.0 行为 |
+|---|---|
+| DeepSeek 官方 / 账号 | 保留原有峰谷价格估算 |
+| Kimi 国内 API `moonshotai-cn` | 内置 6 个模型价格；K3 系列缓存写入价格不确定时显示已知部分 |
+| MiniMax 国内 `minimax-cn` | 内置 `MiniMax-M3.1-Flash`；其余模型显示用量，等待配置价格 |
+| 千问 Token Plan、Kimi Coding、智谱 Coding | 展示套餐用量，不估算逐次扣费 |
+| 海外 API、转售平台、自定义兼容接口 | 展示已记录用量，按精确 provider/model 配置价格后估算金额 |
+
+完整模型、渠道标识与价格来源见 [多渠道使用说明](docs/providers.md)。没有匹配价格不会显示为免费。
 
 ## 安装
 
@@ -81,7 +93,7 @@ macOS 桌面版若没有全局 `dsh`，使用 `/Applications/DeepSeek Harness.ap
 也可以从 [Releases](https://github.com/luomuwen/deepseek-cost-meter/releases) 下载 `.tgz` 安装包：
 
 ```sh
-dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.1.1.tgz
+dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.2.0.tgz
 ```
 
 运行 `npm pack` 可自行打包。运行依赖 zod 随包分发；React 由 Harness 提供。npm 包名为 `deepseek-cost-meter`，公开发布到 npm registry；市场展示名保持“DeepSeek Cost Meter（每轮费用）”。
@@ -91,14 +103,14 @@ dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.1.1.tgz
 - 一轮为 `turn/start` 到 `turn/end`，包括本会话内各步骤和已记录的重试尝试。
 - 读取 API 返回的持久化 usage，不使用字符数估算 token。不把多个累计 usage 样本相加。
 - 输入、缓存读取、缓存写入、输出是互斥桶；推理 token 已包含在输出中，不重复收费。
-- 默认缓存写入按未缓存输入价计算；若服务商采用其他规则，请显式配置。
+- 缓存写入价格按渠道单独配置。未知价格保留为空；例如 Kimi K3 的缓存写入按 TTL 分档，而 dsh 的统一 usage 没有保留该拆分。
 - 缺少 usage、模型价格或缓存拆分时显示不完整；已知金额为部分合计，不代表最终账单。
 - 不含子 Agent 独立会话、标题生成、Search/Fetch、其他工具费用及账户优惠。
 - 金额用 BigInt 定点计算，持久状态用十进制字符串，显示六位小数。
 - 分叉继承记录可显示，累计新增费用不重复包含继承历史。
 - 每轮展示的累计值固定为截至该轮结束时的值。多币种分别显示，不自动换汇。
 
-## 默认价格
+## DeepSeek 默认价格
 
 核验日期：2026-10-29；来源：[DeepSeek 官方人民币定价](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)。币种 CNY，单位元 / 百万 token。
 
@@ -117,31 +129,33 @@ dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.1.1.tgz
 
 ## 修改价格
 
-推荐通过个人配置中对应插件行的 `config.rates` 指定完整同结构价格表，避免直接修改已安装包的文件后被升级覆盖。源码开发时也可修改 `rates.json`。修改后重启 Harness。示意：
+推荐在个人配置中对应插件行添加 `config.additionalRates`，只补充或覆盖指定的 provider/model，保留其他内置价格。避免直接修改已安装包的文件后被升级覆盖。修改后重启 Harness。以下数字仅为格式示例，应替换成实际服务商价格：
 
 ```yaml
 - id: local-deepseek-cost-meter
   config:
-    rates:
-      version: my-provider-2026-11-01
-      source: manual
-      effectiveFrom: '2026-11-01T00:00:00+08:00'
-      calendarThrough: '2027-12-31'
-      holidays: []
-      prices:
-        - provider: my-provider
-          models: [my-model]
-          currency: CNY
-          offPeak:
-            input: '1'
-            cacheRead: '0.02'
-            cacheWrite: '1'
-            output: '4'
+    additionalRates:
+      - provider: my-provider
+        models: [my-model]
+        currency: CNY
+        source: '填写实际价格来源'
+        effectiveFrom: '2026-11-01T00:00:00+08:00'
+        offPeak:
+          input: '1'
+          cacheRead: '0.02'
+          cacheWrite: null
+          output: '4'
 ```
 
-不提供 `peak` 则全天使用 `offPeak`。价格以字符串填写，最多六位小数。配置是完整替换，需保留仍要使用的其他模型行；高峰日历需提供实际节假日，不应随意延长覆盖期。
+`provider` / `models` 必须与 dsh 实际记录的标识完全一致；相同模型名不代表相同价格。不提供 `peak` 则全天使用 `offPeak`。价格以字符串填写，最多六位小数；未知单价填 `null`，只有明确免费才填 `'0'`。每条补充价格必须有 `effectiveFrom`，可用 `source` 标明来源。
+
+`config.providerModes` 可将指定渠道设为 `metered`（按量）、`subscription`（套餐）或 `usage-only`（只统计用量）。套餐渠道即使有价格行，也不会计算金额，除非显式改为 `metered`。配置示例见 [多渠道使用说明](docs/providers.md)。
+
+旧版 `config.rates` 完整替换方式继续兼容；使用它时需自行保留所需模型、套餐模式与峰谷日历。源码开发也可修改 `rates.json`。高峰日历需提供实际节假日，不应随意延长覆盖期。
 
 每次价格配置变化会向 Harness 存储域 `local_turn_cost_prices` 追加不可变快照。首次快照从 `effectiveFrom` 回算；后续快照从加载新配置的时间生效。已保存的旧快照继续用于旧调用；卸载不会删除快照。更新算法或价格目录时投影缓存自动重建。丢失该存储域后只能按剩余价格表回算，因此此插件不是财务账本。
+
+因此，从旧版升级后，新渠道价格和套餐模式从加载新版起应用；升级前的记录继续使用当时保存的规则。新增模型还受各自价格行的生效时间限制。
 
 ## 下载统计
 

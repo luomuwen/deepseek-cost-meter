@@ -20,9 +20,11 @@ Estimated model cost CNY 0.012300 · 1 call
 
 The example uses the bundled peak rate for deepseek-v4-pro. Amounts are estimates based on recorded API usage and configured prices, not account billing records.
 
+**New in 0.2.0:** multi-provider usage with prices for DeepSeek, six Kimi China models and MiniMax-M3.1-Flash in China. Qwen Token Plan, Kimi Coding and ZAI Coding show subscription usage without a per-call charge estimate. Other routes show recorded counters and accept custom prices. The plugin uses models already configured in Harness; it does not enable or switch models. See the [provider matrix and configuration](docs/providers.md).
+
 ## Install
 
-Requires an existing DeepSeek Harness installation. Tested with Desktop **0.2.1-rc.3 on macOS**; other versions and platforms are unverified. No API key or additional model requests are needed.
+Requires an existing DeepSeek Harness installation. Version 0.2.0 was tested against the real Desktop **0.2.1-rc.5 runtime on macOS**; other versions and platforms are unverified. No API key or additional model requests are needed.
 
 Install the npm package into the Desktop profile:
 
@@ -62,7 +64,7 @@ Reapply custom prices and restart Harness. Storage and projection identifiers st
 
 ### Source or release archive
 
-Tested with DeepSeek Harness Desktop **0.2.1-rc.3 on macOS**. Other versions and platforms are unverified. Source installation requires Node.js 22+, npm and Git.
+Tested with the DeepSeek Harness Desktop **0.2.1-rc.5 runtime on macOS**. Other versions and platforms are unverified. Source installation requires Node.js 22+, npm and Git.
 
 ```sh
 git clone https://github.com/luomuwen/deepseek-cost-meter.git
@@ -98,11 +100,15 @@ Alternatively, download a `.tgz` from [Releases](https://github.com/luomuwen/dee
 
 The bundled CNY tariff was checked on **2026-10-29** against [DeepSeek's official pricing](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/). It applies from that date; earlier prices are unknown. Peak-calendar coverage ends on **2026-12-31**. Expired calendars are marked unavailable instead of silently using stale rules.
 
-Prices are per million tokens. Official `deepseek`, `deepseek-official` and `deepseek-account` routes are supported. Unrecognized providers do not inherit official prices. Cache writes default to the uncached-input rate. Peak requests are approximated using the step/retry start timestamp in UTC+8.
+Prices are per million tokens. Official `deepseek`, `deepseek-official` and `deepseek-account` routes are supported. Unrecognized providers do not inherit official prices. Cache-write prices are route-specific: unknown prices remain unknown. Kimi K3 cache-write TTL tiers are not available in Harness's normalized usage, so those charges are excluded and explicitly marked incomplete. Peak requests are approximated using the step/retry start timestamp in UTC+8.
 
-Prefer supplying the complete same-shaped object under the plugin's `config.rates`, so package updates do not overwrite edits to installed files. Source developers can also edit `rates.json`. Restart Harness after changes. Decimal prices must be strings with up to six fractional digits. Omit `peak` for flat pricing. See the [Chinese configuration guide](README.md#修改价格) and [architecture](docs/architecture.md) for the full contract.
+Prefer `config.additionalRates` to add or override exact provider/model routes while retaining bundled defaults. Every added row requires `effectiveFrom`; `source` records its provenance. Decimal prices must be strings with up to six fractional digits. Use `null` for an unknown price and `'0'` only for a confirmed zero price. Omit `peak` for flat pricing. `config.providerModes` selects `metered`, `subscription` or `usage-only` per provider; a subscription route needs an explicit `metered` override before prices apply. Restart Harness after changes. See the [configuration guide](docs/providers.md) and [architecture](docs/architecture.md).
+
+The existing `config.rates` option still replaces the complete catalog, including provider modes. Source developers can also edit `rates.json`.
 
 Rate changes append immutable snapshots to Harness storage. The initial snapshot starts at `effectiveFrom`; later changes take effect when loaded. Old calls use their saved price history. Losing that history prevents exact reconstruction: this is not an accounting ledger.
+
+New multi-provider rules therefore apply from the time an existing installation loads 0.2.0. Earlier calls retain their historical rules, and new model rows also respect their individual effective dates.
 
 ## Download statistics
 

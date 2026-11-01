@@ -33,28 +33,37 @@ export function clientFactory(require, dictionaries) {
     const current = data?.turns?.[turn.turn];
     if (!current) return h('div', { className: 'dsh-cost-meter', role: 'status' }, t('waiting'));
     const amount = amounts(current.totals);
-    const title = current.calls === 0 ? t('zero') : !amount ? t('unavailable')
-      : t(current.unknown ? 'partial' : 'summary', { amount });
+    const allSubscription = current.lines.length > 0 && current.lines.every(row => row.billingMode === 'subscription');
+    const tokenValues = current.lines.flatMap(row => row.usage ? Object.values(row.usage).filter(value => value !== null) : []);
+    const tokens = tokenValues.reduce((sum, value) => sum + BigInt(value), 0n).toLocaleString();
+    const title = current.calls === 0 ? t('zero') : !amount ? t(allSubscription ? 'subscriptionSummary' : 'unavailable')
+      : t(current.unknown || current.unpriced ? 'partial' : 'summary', { amount });
     // Stable per-turn snapshot prevents older rows changing as later turns finish.
     const total = current.sessionTotals ?? {};
     const note = text => h('p', { className: 'cost-note' }, text);
     return h('details', { className: 'dsh-cost-meter', 'data-cost-turn': current.turn },
-      h('summary', null, h('span', { className: 'cost-amount' }, title), ' · ', t('calls', { count: current.calls })),
+      h('summary', null, h('span', { className: 'cost-amount' }, title), ' · ', t('calls', { count: current.calls }),
+        tokenValues.length > 0 && ` · ${t('recordedTokens', { count: tokens })}`),
       h('div', { className: 'cost-body' },
         current.unknown > 0 && note(t('missing', { count: current.unknown })),
+        current.unpriced > 0 && note(t('unpriced', { count: current.unpriced })),
         current.inherited && note(t('inherited')),
         ...current.lines.map((row, index) => h('section', { key: index },
           h('div', { className: 'cost-route' }, `${row.provider} / ${row.model} · `, t('calls', { count: row.calls })),
           row.issue && note(t(row.issue)),
+          row.billingMode !== 'metered' && row.issue !== row.billingMode && note(t(row.billingMode)),
+          row.missingPrices?.length > 0 && note(t('missingPrices', { buckets: row.missingPrices.map(key => t(key)).join(' / ') })),
           row.usage && h('div', { className: 'cost-table-scroll' }, h('table', null,
             h('thead', null, h('tr', null, h('th'), h('th', null, t('tokens')), h('th', null, t('price')))),
             h('tbody', null, ...['input', 'cacheRead', 'cacheWrite', 'output'].map(key =>
-              h('tr', { key }, h('td', null, t(key)), h('td', null, row.usage[key].toLocaleString()),
-                h('td', null, row.rates ? `${row.currency} ${row.rates[key]}` : '—')))))),
-          !row.issue && h('div', { className: 'cost-amount' }, `${t('subtotal')}: ${money(row.amountPico, row.currency)}`),
-          row.version && note(`${t('version')}: ${row.version} · ${t(row.period)}`))),
+              h('tr', { key }, h('td', null, t(key)), h('td', null, row.usage[key] === null ? t('unknown') : row.usage[key].toLocaleString()),
+                h('td', null, row.rates && row.rates[key] !== null ? `${row.currency} ${row.rates[key]}` : '—')))))),
+          row.hasAmount && h('div', { className: 'cost-amount' }, `${t(row.issue ? 'knownSubtotal' : 'subtotal')}: ${money(row.amountPico, row.currency)}`),
+          row.version && note(`${t('version')}: ${row.version} · ${t(row.period)}`),
+          row.source && note(`${t('source')}: ${row.source}`))),
         Object.keys(total).length > 0 && h('p', { className: 'cost-amount' }, t('session', { amount: amounts(total) })),
         current.sessionUnknown > 0 && note(t('sessionPartial')),
+        current.sessionUnpriced > 0 && note(t('unpriced', { count: current.sessionUnpriced })),
         note(t('scope')), note(t('timeRule')), note(t('history'))));
   }
   return {
