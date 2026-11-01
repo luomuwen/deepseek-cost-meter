@@ -1,5 +1,13 @@
 # 本地验证记录
 
+## 0.1.1 npm 发布验证（2026-11-01）
+
+- 17 项单元与包元数据测试通过；检查 npm 包名、Cordis 引用和生成客户端注册 ID 一致。
+- 将实际 `.tgz` 解包到隔离目录，以 `DSH_COST_PLUGIN_ROOT` 指向该目录运行真实 Harness 集成检查，验证 Host 加载、生成客户端渲染、价格存储及卸载/重载。
+- 保留原有投影、配置行和存储域标识，未改计费算法。
+
+## 0.1.0 首次验证
+
 日期：2026-10-29；环境：macOS、DeepSeek Harness Desktop 0.2.1-rc.3。
 
 - `npm run check`：15 项计费测试全部通过，Host 和生成的 Client JavaScript 语法检查通过。

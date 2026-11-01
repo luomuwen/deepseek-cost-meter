@@ -1,7 +1,6 @@
 {
-  "name": "@local/deepseek-cost-meter",
-  "version": "0.1.0",
-  "private": true,
+  "name": "deepseek-cost-meter",
+  "version": "0.1.1",
   "type": "module",
   "description": "Per-turn model cost estimates for DeepSeek Harness",
   "license": "MIT",
@@ -35,7 +34,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.js",
-    "check": "node --check index.js && node --check client.js && npm test"
+    "check": "node --check index.js && node --check client.js && npm test",
+    "prepack": "npm run build && npm run check"
   },
   "dependencies": {
     "zod": "4.6.7"
@@ -77,5 +77,9 @@
   ],
   "engines": {
     "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

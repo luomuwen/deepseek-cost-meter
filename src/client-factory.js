@@ -63,7 +63,7 @@ export function clientFactory(require, dictionaries) {
       ctx.effect(() => ctx.locale.register(ns, dictionaries));
       ctx.effect(() => {
         const style = document.createElement('style');
-        style.dataset.plugin = '@local/deepseek-cost-meter';
+        style.dataset.plugin = 'deepseek-cost-meter';
         style.textContent = css;
         document.head.appendChild(style);
         return () => style.remove();

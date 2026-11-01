@@ -17,6 +17,29 @@ The example uses the bundled peak rate for deepseek-v4-pro. Amounts are estimate
 
 ## Install
 
+Recommended npm installation:
+
+```sh
+dsh plugin --profile desktop add deepseek-cost-meter
+# Web profile:
+dsh plugin --profile web add deepseek-cost-meter
+```
+
+On macOS without a global `dsh`, use `/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`.
+
+### Upgrade from 0.1.0
+
+Save any custom `config.rates`, remove the old `@local/deepseek-cost-meter` package, then install the new package. Do not enable both:
+
+```sh
+dsh plugin --profile desktop remove @local/deepseek-cost-meter
+dsh plugin --profile desktop add deepseek-cost-meter
+```
+
+Reapply custom prices and restart Harness. Storage and projection identifiers stay unchanged so existing price snapshots remain usable.
+
+### Source or release archive
+
 Tested with DeepSeek Harness Desktop **0.2.1-rc.3 on macOS**. Other versions and platforms are unverified. Source installation requires Node.js 22+, npm and Git.
 
 ```sh
@@ -36,7 +59,7 @@ dsh plugin --profile desktop add "$PWD"
 
 On macOS, the bundled CLI is `/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`. For Web, use `--profile web` and restart `dsh web`.
 
-Alternatively, download a `.tgz` from [Releases](https://github.com/luomuwen/deepseek-cost-meter/releases) and install it with `dsh plugin --profile desktop add /absolute/path/package.tgz`. `npm pack` builds the package locally. Zod is bundled; React is provided by Harness. The package retains the name `@local/deepseek-cost-meter` for compatibility and is not published to the npm registry.
+Alternatively, download a `.tgz` from [Releases](https://github.com/luomuwen/deepseek-cost-meter/releases) and install it with `dsh plugin --profile desktop add /absolute/path/package.tgz`. `npm pack` builds the package locally. Zod is bundled; React is provided by Harness. The public npm package is `deepseek-cost-meter`.
 
 ## Accounting model
 
@@ -75,7 +98,7 @@ CI checks syntax, unit tests, deterministic client generation and package conten
 Disable or remove the plugin in Harness, or run:
 
 ```sh
-dsh plugin --profile desktop remove @local/deepseek-cost-meter
+dsh plugin --profile desktop remove deepseek-cost-meter
 ```
 
 Restart Harness if needed. The plugin does not modify conversation logs; price snapshots are retained by Harness storage.
