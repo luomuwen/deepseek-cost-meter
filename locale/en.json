@@ -39,5 +39,18 @@
   "missingPrices": "Unpriced dimensions: {buckets}",
   "knownSubtotal": "Known cost subtotal",
   "source": "Price source",
-  "flat": "Flat rate"
+  "flat": "Flat rate",
+  "dockTitle": "Session costs",
+  "dockEstimate": "Est. {amount}",
+  "dockKnown": "Known cost ≈ {amount}",
+  "dockTotal": "Session estimate",
+  "dockLatest": "Latest completed turn",
+  "dockPlan": "Plan usage",
+  "dockUsageOnly": "Usage only",
+  "dockUnavailable": "Cost unavailable",
+  "dockEmpty": "Cost · No completed calls",
+  "dockClose": "Close cost details",
+  "dockRunning": "Current turn is running and not included; amounts cover completed turns only.",
+  "dockSettled": "Updated after each turn ends, including failed and interrupted turns.",
+  "dockScope": "New model calls in this session only. Inherited fork history, independent child sessions and tool fees are excluded. Amounts are estimates; provider billing takes precedence."
 }

@@ -39,5 +39,18 @@
   "missingPrices": "未计价项目：{buckets}",
   "knownSubtotal": "已知费用小计",
   "source": "价格来源",
-  "flat": "固定单价"
+  "flat": "固定单价",
+  "dockTitle": "会话费用",
+  "dockEstimate": "费用约 {amount}",
+  "dockKnown": "已知费用约 {amount}",
+  "dockTotal": "本会话累计估算",
+  "dockLatest": "最近完成一轮",
+  "dockPlan": "套餐用量",
+  "dockUsageOnly": "仅统计用量",
+  "dockUnavailable": "费用待估算",
+  "dockEmpty": "费用 · 暂无已完成调用",
+  "dockClose": "关闭费用详情",
+  "dockRunning": "本轮进行中，尚未计入；金额截至最近完成的一轮。",
+  "dockSettled": "每轮结束后更新，包含正常完成、失败及中断的轮次。",
+  "dockScope": "仅统计本会话新增模型调用；不重复计入分叉继承历史，不含独立子会话和工具费用。金额为估算，以账单为准。"
 }

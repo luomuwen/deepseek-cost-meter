@@ -31,6 +31,8 @@ Each model row may have a later effective date and its own source. Flat-price ro
 
 `src/client-factory.js` uses Harness-provided React, `useProjection` and `conversation.chat.turnTail`. `scripts/build.mjs` generates the standalone `client.js` and embeds locale dictionaries. The client neither scans chat DOM nor changes conversation messages. Registration and styles are removed on disposal.
 
+Version 0.3 also registers an independent `conversation.composer.dock` entry at order 2. It reads the same `localTurnCost` view and the session's running state. Monetary totals remain authoritative projection values; model breakdowns aggregate ended, non-inherited turns with BigInt and never recompute prices. Running calls are explicitly excluded. The ReactDOM portal is anchored through owned element refs, clamps to the viewport, and closes on outside interaction, Escape or a session-key change. Event listeners and resize observers are removed on close/unmount. ReactDOM is shared with Harness; jsdom is a development-only interaction-test dependency.
+
 ## Limits
 
 Storage grows with turn count and distinct model/price combinations. Unknown usage cannot be recovered from rendered text. Independent subagent sessions and model calls outside the current session are excluded. Price history is not an authoritative financial ledger. Runtime service and slot APIs depend on the tested Harness version.

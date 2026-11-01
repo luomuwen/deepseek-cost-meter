@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-11-02
+
+- Add a composer dock cost control with session totals, latest completed turn and provider/model breakdowns.
+- Reuse settled `localTurnCost` data without changing pricing, storage or accounting; explicitly exclude the running turn.
+- Preserve partial-cost, plan-only, unknown-price, separate-currency and inherited-history semantics.
+- Support outside-click and Escape dismissal, focus restoration, session-switch reset and viewport-constrained positioning.
+- Add DOM interaction coverage and dock registration checks in the real Harness runtime. All 34 tests pass; the generated client was visually checked in light/dark and narrow-window synthetic previews.
+
 ## 0.2.0 — 2026-11-01
 
 - Display recorded usage for all Harness routes, including providers without a configured tariff.
