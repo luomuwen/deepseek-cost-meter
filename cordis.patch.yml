@@ -1,4 +1,4 @@
 - insert:
     - id: local-deepseek-cost-meter
-      name: '@local/deepseek-cost-meter'
+      name: 'deepseek-cost-meter'
       config: {}

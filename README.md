@@ -12,6 +12,29 @@
 
 ## 安装
 
+推荐通过 npm 包名安装（Node.js 22+ 的 Harness 环境）：
+
+```sh
+dsh plugin --profile desktop add deepseek-cost-meter
+# Web profile:
+dsh plugin --profile web add deepseek-cost-meter
+```
+
+macOS 桌面版没有全局 `dsh` 时，使用应用自带的 `/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`。
+
+### 从 0.1.0 升级
+
+旧包名是 `@local/deepseek-cost-meter`。请先保存自行配置的 `config.rates`，移除旧包再安装新包，不要同时启用两者：
+
+```sh
+dsh plugin --profile desktop remove @local/deepseek-cost-meter
+dsh plugin --profile desktop add deepseek-cost-meter
+```
+
+安装后重新应用自定义价格并重启 Harness。存储域和投影标识保持不变，可继续使用原有价格快照。
+
+### 源码或安装包
+
 需要已安装的 DeepSeek Harness。源码安装和开发需要 Node.js 22 或更新版本、npm 和 Git；已验证的 Harness 版本见上文。
 
 ```sh
@@ -36,10 +59,10 @@ macOS 桌面版若没有全局 `dsh`，使用 `/Applications/DeepSeek Harness.ap
 也可以从 [Releases](https://github.com/luomuwen/deepseek-cost-meter/releases) 下载 `.tgz` 安装包：
 
 ```sh
-dsh plugin --profile desktop add /absolute/path/local-deepseek-cost-meter-0.1.0.tgz
+dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.1.1.tgz
 ```
 
-运行 `npm pack` 可自行打包。运行依赖 zod 随包分发；React 由 Harness 提供。npm 包名保留为 `@local/deepseek-cost-meter` 以兼容现有安装；本项目不发布到 npm registry。
+运行 `npm pack` 可自行打包。运行依赖 zod 随包分发；React 由 Harness 提供。npm 包名为 `deepseek-cost-meter`，公开发布到 npm registry；市场展示名保持“DeepSeek Cost Meter（每轮费用）”。
 
 ## 计费口径
 
@@ -122,7 +145,7 @@ ELECTRON_RUN_AS_NODE=1 '/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSe
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop remove @local/deepseek-cost-meter
+  plugin --profile desktop remove deepseek-cost-meter
 ```
 
 若当前进程未自动卸载，请重启应用。会话日志不会被插件改写。

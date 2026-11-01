@@ -10,7 +10,7 @@ const assert = require('node:assert/strict');
   const runtime = process.env.DSH_RUNTIME_ROOT || '/Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh';
   const req = createRequire(path.join(runtime, 'package.json'));
   const { Context } = req('@deepseek-ai/cordis');
-  const pluginRoot = path.resolve(__dirname, '..');
+  const pluginRoot = process.env.DSH_COST_PLUGIN_ROOT || path.resolve(__dirname, '..');
   const plugin = await import(pathToFileURL(path.join(pluginRoot, 'index.js')));
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'turn-cost-test-'));
   const ctx = new Context();
@@ -43,14 +43,19 @@ const assert = require('node:assert/strict');
     assert.equal(snapshot.turns[1].unknown, 0);
     assert.equal(snapshot.totals.CNY, '1440000000');
 
-    const { clientFactory } = await import(pathToFileURL(path.join(pluginRoot, 'src/client-factory.js')));
     const dictionaries = Object.fromEntries(await Promise.all(['zh', 'en'].map(async lang => [lang,
       JSON.parse(await fs.readFile(path.join(pluginRoot, 'locale', lang + '.json'), 'utf8'))])));
-    const testRequire = createRequire(path.join(pluginRoot, 'package.json'));
-    const browser = clientFactory(testRequire, dictionaries);
+    const testRequire = createRequire(path.join(path.resolve(__dirname, '..'), 'package.json'));
+    const manifest = JSON.parse(await fs.readFile(path.join(pluginRoot, 'package.json'), 'utf8'));
+    let registration;
+    const sandbox = { window: { __ModuleLoader__: { load(value) { registration = value; } } } };
+    require('node:vm').runInNewContext(await fs.readFile(path.join(pluginRoot, 'client.js'), 'utf8'), sandbox);
+    assert.equal(registration.id, manifest.name);
+    const browser = registration.factory(testRequire);
     const cleanups = [];
     let Component, registered = 0;
     global.document = { createElement: () => ({ dataset: {}, remove() { registered--; } }), head: { appendChild() { registered++; } } };
+    sandbox.document = global.document;
     browser.apply({
       effect(fn) { cleanups.push(fn()); },
       locale: { register() { return () => {}; } },
