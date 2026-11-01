@@ -110,7 +110,7 @@ Rate changes append immutable snapshots to Harness storage. The initial snapshot
 - Use the [last-week JSON endpoint](https://api.npmjs.org/downloads/point/last-week/deepseek-cost-meter) or [last-month JSON endpoint](https://api.npmjs.org/downloads/point/last-month/deepseek-cost-meter) for your own reporting.
 - [GitHub Release](https://github.com/luomuwen/deepseek-cost-meter/releases) asset downloads are counted separately. npm downloads are not unique users or active installations: CI, repeat installs and caching affect the totals.
 
-The plugin does not upload usage telemetry. Download statistics and market metadata may take time to appear after publication.
+The plugin does not upload usage telemetry. Download statistics and market metadata may take time to appear after publication. A temporary 404 from the statistics API or an empty badge does not mean the package is unpublished.
 
 ## Troubleshooting
 

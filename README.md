@@ -149,7 +149,7 @@ dsh plugin --profile desktop add /absolute/path/deepseek-cost-meter-0.1.1.tgz
 - [最近一周下载量 JSON](https://api.npmjs.org/downloads/point/last-week/deepseek-cost-meter)和[最近一个月下载量 JSON](https://api.npmjs.org/downloads/point/last-month/deepseek-cost-meter)可用于自己的统计工具。
 - [GitHub Releases](https://github.com/luomuwen/deepseek-cost-meter/releases)安装包下载与 npm 下载分别统计。npm 下载次数不等于独立用户数或活跃安装数，CI、重复安装和缓存都会影响统计。
 
-插件本身不上传使用遥测。新发布包的下载统计和市场展示可能延迟更新。
+插件本身不上传使用遥测。新发布包的下载统计和市场展示可能延迟更新；统计 API 暂时返回 404 或徽章暂无数据，不代表安装包未发布。
 
 ## 常见问题
 
