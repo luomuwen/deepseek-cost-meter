@@ -37,28 +37,37 @@ function clientFactory(require, dictionaries) {
     const current = data?.turns?.[turn.turn];
     if (!current) return h('div', { className: 'dsh-cost-meter', role: 'status' }, t('waiting'));
     const amount = amounts(current.totals);
-    const title = current.calls === 0 ? t('zero') : !amount ? t('unavailable')
-      : t(current.unknown ? 'partial' : 'summary', { amount });
+    const allSubscription = current.lines.length > 0 && current.lines.every(row => row.billingMode === 'subscription');
+    const tokenValues = current.lines.flatMap(row => row.usage ? Object.values(row.usage).filter(value => value !== null) : []);
+    const tokens = tokenValues.reduce((sum, value) => sum + BigInt(value), 0n).toLocaleString();
+    const title = current.calls === 0 ? t('zero') : !amount ? t(allSubscription ? 'subscriptionSummary' : 'unavailable')
+      : t(current.unknown || current.unpriced ? 'partial' : 'summary', { amount });
     // Stable per-turn snapshot prevents older rows changing as later turns finish.
     const total = current.sessionTotals ?? {};
     const note = text => h('p', { className: 'cost-note' }, text);
     return h('details', { className: 'dsh-cost-meter', 'data-cost-turn': current.turn },
-      h('summary', null, h('span', { className: 'cost-amount' }, title), ' · ', t('calls', { count: current.calls })),
+      h('summary', null, h('span', { className: 'cost-amount' }, title), ' · ', t('calls', { count: current.calls }),
+        tokenValues.length > 0 && ` · ${t('recordedTokens', { count: tokens })}`),
       h('div', { className: 'cost-body' },
         current.unknown > 0 && note(t('missing', { count: current.unknown })),
+        current.unpriced > 0 && note(t('unpriced', { count: current.unpriced })),
         current.inherited && note(t('inherited')),
         ...current.lines.map((row, index) => h('section', { key: index },
           h('div', { className: 'cost-route' }, `${row.provider} / ${row.model} · `, t('calls', { count: row.calls })),
           row.issue && note(t(row.issue)),
+          row.billingMode !== 'metered' && row.issue !== row.billingMode && note(t(row.billingMode)),
+          row.missingPrices?.length > 0 && note(t('missingPrices', { buckets: row.missingPrices.map(key => t(key)).join(' / ') })),
           row.usage && h('div', { className: 'cost-table-scroll' }, h('table', null,
             h('thead', null, h('tr', null, h('th'), h('th', null, t('tokens')), h('th', null, t('price')))),
             h('tbody', null, ...['input', 'cacheRead', 'cacheWrite', 'output'].map(key =>
-              h('tr', { key }, h('td', null, t(key)), h('td', null, row.usage[key].toLocaleString()),
-                h('td', null, row.rates ? `${row.currency} ${row.rates[key]}` : '—')))))),
-          !row.issue && h('div', { className: 'cost-amount' }, `${t('subtotal')}: ${money(row.amountPico, row.currency)}`),
-          row.version && note(`${t('version')}: ${row.version} · ${t(row.period)}`))),
+              h('tr', { key }, h('td', null, t(key)), h('td', null, row.usage[key] === null ? t('unknown') : row.usage[key].toLocaleString()),
+                h('td', null, row.rates && row.rates[key] !== null ? `${row.currency} ${row.rates[key]}` : '—')))))),
+          row.hasAmount && h('div', { className: 'cost-amount' }, `${t(row.issue ? 'knownSubtotal' : 'subtotal')}: ${money(row.amountPico, row.currency)}`),
+          row.version && note(`${t('version')}: ${row.version} · ${t(row.period)}`),
+          row.source && note(`${t('source')}: ${row.source}`))),
         Object.keys(total).length > 0 && h('p', { className: 'cost-amount' }, t('session', { amount: amounts(total) })),
         current.sessionUnknown > 0 && note(t('sessionPartial')),
+        current.sessionUnpriced > 0 && note(t('unpriced', { count: current.sessionUnpriced })),
         note(t('scope')), note(t('timeRule')), note(t('history'))));
   }
   return {
@@ -79,6 +88,6 @@ function clientFactory(require, dictionaries) {
   };
 }
 
-    return clientFactory(require, {"en":{"meta":{"title":"Turn costs","description":"Show estimated model cost, request counts and token pricing below each completed turn."},"summary":"Estimated model cost: {amount}","partial":"Known model cost: {amount}","unavailable":"Model cost unavailable","zero":"No model calls this turn","calls":"{count} calls","missing":"{count} calls have incomplete billing data","inherited":"Inherited history; excluded from new spending in this branch","scope":"Model requests in this session only. Subagents, title generation and tool charges are excluded. Estimates use API usage and configured prices; the provider invoice is authoritative.","timeRule":"Peak pricing uses request start time. Cache writes use the uncached input rate.","history":"Older records are recalculated using verified historical prices. Prices checked on 2026-10-29.","session":"New session model cost through this turn: {amount}","input":"Uncached input","cacheRead":"Cache reads","cacheWrite":"Cache writes","output":"Output (including reasoning)","tokens":"Tokens","price":"Rate / 1M tokens","subtotal":"Estimated cost","peak":"Peak","offPeak":"Off-peak","version":"Price version","usage-unavailable":"Usage missing or incomplete","price-unavailable":"No applicable price","calendar-expired":"Peak calendar needs updating","waiting":"Loading cost estimate","unknown":"Unknown","sessionPartial":"Some calls are missing from this subtotal."},"zh":{"meta":{"title":"每轮费用","description":"在每轮回复下方显示模型费用估算、调用次数和 token 计费明细。"},"summary":"本轮模型费用约 {amount}","partial":"本轮已知模型费用约 {amount}","unavailable":"本轮模型费用暂无法估算","zero":"本轮没有模型调用","calls":"{count} 次调用","missing":"{count} 次调用缺少完整计费数据","inherited":"继承自原会话，不计入本分支新增费用","scope":"仅统计本会话模型请求，不含子 Agent、标题生成及工具费用。金额按 API 用量与单价估算，以服务商账单为准。","timeRule":"峰谷价按请求开始时间估算；缓存写入按未命中输入计价。","history":"安装前的记录按已核验的历史价格回算。价格表核验日期：2026-10-29。","session":"本会话新增模型费用（截至本轮）约 {amount}","input":"未缓存输入","cacheRead":"缓存读取","cacheWrite":"缓存写入","output":"输出（含推理）","tokens":"Token 数","price":"单价 / 百万 token","subtotal":"费用估算","peak":"高峰时段","offPeak":"空闲时段","version":"价格版本","usage-unavailable":"用量缺失或不完整","price-unavailable":"缺少适用价格","calendar-expired":"峰谷日历需要更新","waiting":"费用统计正在加载","unknown":"未知","sessionPartial":"累计中有未能计价的调用。"}});
+    return clientFactory(require, {"en":{"meta":{"title":"Turn costs","description":"Show estimated model cost, request counts and token pricing below each completed turn."},"summary":"Estimated model cost: {amount}","partial":"Known model cost: {amount}","unavailable":"Usage tracking; complete cost unavailable","zero":"No model calls this turn","calls":"{count} calls","missing":"{count} calls have incomplete billing data","inherited":"Inherited history; excluded from new spending in this branch","scope":"Model requests in this session only. Subagents, title generation and tool charges are excluded. Estimates use API usage and configured prices; the provider invoice is authoritative.","timeRule":"Estimates use the actual provider and configured rates. Unknown rates are not zero. Peak rates use request start time.","history":"Historical replay uses saved price snapshots. New routes are priced only from their coverage start.","session":"New session model cost through this turn: {amount}","input":"Uncached input","cacheRead":"Cache reads","cacheWrite":"Cache writes","output":"Output (including reasoning)","tokens":"Tokens","price":"Rate / 1M tokens","subtotal":"Estimated cost","peak":"Peak","offPeak":"Off-peak","version":"Price version","usage-unavailable":"Usage missing or incomplete","price-unavailable":"No applicable price","calendar-expired":"Peak calendar needs updating","waiting":"Loading cost estimate","unknown":"Unknown","sessionPartial":"Some calls are missing from this subtotal.","subscriptionSummary":"Plan usage (no per-call charge estimate)","recordedTokens":"{count} recorded tokens","unpriced":"{count} plan or usage-only calls are excluded from monetary totals.","subscription":"Plan/quota route: usage is shown without treating public API prices as account charges.","usage-only":"Usage-only route; no monetary cost is calculated.","price-incomplete":"Some rates are unknown. Only the known subtotal is shown.","missingPrices":"Unpriced dimensions: {buckets}","knownSubtotal":"Known cost subtotal","source":"Price source","flat":"Flat rate"},"zh":{"meta":{"title":"每轮费用","description":"在每轮回复下方显示模型费用估算、调用次数和 token 计费明细。"},"summary":"本轮模型费用约 {amount}","partial":"本轮已知模型费用约 {amount}","unavailable":"本轮费用暂无法完整估算","zero":"本轮没有模型调用","calls":"{count} 次调用","missing":"{count} 次调用缺少完整计费数据","inherited":"继承自原会话，不计入本分支新增费用","scope":"仅统计本会话模型请求，不含子 Agent、标题生成及工具费用。金额按 API 用量与单价估算，以服务商账单为准。","timeRule":"按实际提供商与配置单价估算；未知单价不按零处理。峰谷价按请求开始时间判断。","history":"价格快照用于历史回放；新渠道仅从其价格覆盖时间开始估算。","session":"本会话新增模型费用（截至本轮）约 {amount}","input":"未缓存输入","cacheRead":"缓存读取","cacheWrite":"缓存写入","output":"输出（含推理）","tokens":"Token 数","price":"单价 / 百万 token","subtotal":"费用估算","peak":"高峰时段","offPeak":"空闲时段","version":"价格版本","usage-unavailable":"用量缺失或不完整","price-unavailable":"缺少适用价格","calendar-expired":"峰谷日历需要更新","waiting":"费用统计正在加载","unknown":"未知","sessionPartial":"累计中有未能计价的调用。","subscriptionSummary":"本轮套餐用量（不估算按次扣费）","recordedTokens":"已记录 {count} tokens","unpriced":"{count} 次套餐或仅统计用量的调用未计入金额。","subscription":"套餐/额度渠道：展示用量，不将公开 API 价格当作实际扣款。","usage-only":"此渠道仅统计用量，未计算费用。","price-incomplete":"部分费用缺少确定单价，以下仅为已知小计。","missingPrices":"未计价项目：{buckets}","knownSubtotal":"已知费用小计","source":"价格来源","flat":"固定单价"}});
   },
 });

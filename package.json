@@ -1,6 +1,6 @@
 {
   "name": "deepseek-cost-meter",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "Per-turn model cost estimates for DeepSeek Harness",
   "license": "MIT",
@@ -29,7 +29,8 @@
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
-    "docs/*.md"
+    "docs/architecture.md",
+    "docs/providers.md"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",

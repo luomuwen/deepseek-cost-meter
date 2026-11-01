@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 — 2026-11-01
+
+- Display recorded usage for all Harness routes, including providers without a configured tariff.
+- Add verified CNY prices for six Kimi China API models and MiniMax-M3.1-Flash in China.
+- Identify Qwen Token Plan, Kimi Coding, ZAI Coding and other bundled subscription routes; show usage without inventing per-call charges.
+- Show known subtotals and missing price dimensions, including Kimi K3 cache-write TTL tiers.
+- Add exact-route `additionalRates`, `providerModes`, per-row sources and effective dates; preserve the existing full-catalog configuration.
+- Rebuild projections with the new schema while preserving historical price snapshots and DeepSeek accounting behavior.
+- Verify 29 tests and mixed-provider fixtures in the real Harness Desktop 0.2.1-rc.5 runtime, including catalog upgrade, rendering and replay.
+
 ## 0.1.1 — 2026-11-01
 
 - Publish the public npm package as `deepseek-cost-meter`.
