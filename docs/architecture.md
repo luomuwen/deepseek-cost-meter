@@ -36,3 +36,9 @@ Version 0.3 also registers an independent `conversation.composer.dock` entry at 
 ## Limits
 
 Storage grows with turn count and distinct model/price combinations. Unknown usage cannot be recovered from rendered text. Independent subagent sessions and model calls outside the current session are excluded. Price history is not an authoritative financial ledger. Runtime service and slot APIs depend on the tested Harness version.
+
+## Sidebar account balance (0.4)
+
+The optional client account service registers `sidebar.footer.action` above the native account menu. It uses the existing authenticated `remote.account.watch/getBalance` operations; no custom endpoint or credential handling is introduced. Client metadata identifies this plugin and its version. The store is memory-only, discards superseded responses, clears on account stream loss, deduplicates requests, and times out the UI wait after 15 seconds. Hidden documents skip refreshes; visible views refresh every minute. Manual refresh has a five-second cooldown. Same-account failures retain a visibly stale snapshot.
+
+Recharge and bonus wallets stay separate in details; totals add decimal strings with BigInt only within a currency. Balances never enter cost projections or price snapshots. Sidebar collapse, portal placement, Escape, outside interaction, and cleanup are covered by React DOM tests. Hosts without the optional account service retain existing cost controls.

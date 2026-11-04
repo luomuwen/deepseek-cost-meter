@@ -20,13 +20,15 @@ Estimated model cost CNY 0.012300 · 1 call
 
 The example uses the bundled peak rate for deepseek-v4-pro. Amounts are estimates based on recorded API usage and configured prices, not account billing records.
 
+**New in 0.4.0:** an account-balance control above the sidebar account menu reads the signed-in official DeepSeek account through Harness. Click for top-up/bonus wallets and the last update time. Refreshes every minute while visible, with manual refresh, stale-data labels and account-change protection. No additional API key is required. API-key-only users need an account sign-in; other providers are not covered. Balances remain in memory and are separate from estimated session costs.
+
 **New in 0.3.0:** a cost control beneath the composer shows the settled session estimate. Click it for the latest completed turn and per-provider/model costs, calls and recorded tokens. It sits alongside the native statistics controls without replacing them.
 
 **New in 0.2.0:** multi-provider usage with prices for DeepSeek, six Kimi China models and MiniMax-M3.1-Flash in China. Qwen Token Plan, Kimi Coding and ZAI Coding show subscription usage without a per-call charge estimate. Other routes show recorded counters and accept custom prices. The plugin uses models already configured in Harness; it does not enable or switch models. See the [provider matrix and configuration](docs/providers.md).
 
 ## Install
 
-Requires an existing DeepSeek Harness installation. Version 0.3.0 was tested against the real Desktop **0.2.1-rc.5 runtime on macOS**; other versions and platforms are unverified. No API key or additional model requests are needed.
+Requires an existing DeepSeek Harness installation. Version 0.4.0 was tested against the real Desktop **0.2.1-rc.5 runtime on macOS**; other versions and platforms are unverified. No API key or additional model requests are needed.
 
 Install the npm package into the Desktop profile:
 
@@ -93,7 +95,7 @@ The composer dock uses the same settled projection as the per-turn cost rows. It
 
 Click the control to see session totals, the latest completed turn and provider/model breakdowns. Currencies remain separate and inherited fork history is excluded from new spending. The dock uses four decimal places, while details retain six; nonzero amounts below display precision use a less-than indicator.
 
-Escape, the close button or an outside click dismisses the dialog. Switching sessions closes it automatically. The panel supports dark/light themes and narrow windows. Existing native statistics and per-turn cost rows remain available. No account-balance reads or additional model calls are made.
+Escape, the close button or an outside click dismisses the dialog. Switching sessions closes it automatically. The panel supports dark/light themes and narrow windows. Existing native statistics and per-turn cost rows remain available. The sidebar separately reads the official account balance through Harness; no additional model calls are made.
 
 ## Accounting model
 

@@ -52,5 +52,22 @@
   "dockClose": "关闭费用详情",
   "dockRunning": "本轮进行中，尚未计入；金额截至最近完成的一轮。",
   "dockSettled": "每轮结束后更新，包含正常完成、失败及中断的轮次。",
-  "dockScope": "仅统计本会话新增模型调用；不重复计入分叉继承历史，不含独立子会话和工具费用。金额为估算，以账单为准。"
+  "dockScope": "仅统计本会话新增模型调用；不重复计入分叉继承历史，不含独立子会话和工具费用。金额为估算，以账单为准。",
+  "balanceTitle": "DeepSeek 账号余额",
+  "balanceShort": "余额",
+  "balanceLoading": "正在查询余额…",
+  "balanceUnsupported": "当前 dsh 暂不支持账号余额查询",
+  "balanceSignIn": "请先登录 DeepSeek 账号",
+  "balanceDisconnected": "账号连接已断开，请重新连接 dsh",
+  "balanceFailed": "余额查询失败，请稍后刷新",
+  "balanceEmpty": "暂无钱包数据",
+  "balanceStale": "上次余额",
+  "balanceRefresh": "刷新余额",
+  "balanceTotal": "账户总余额",
+  "balanceRecharge": "充值余额",
+  "balanceBonus": "赠送余额",
+  "balanceUpdated": "更新于 {time}",
+  "balanceStaleNote": "当前显示上次查询结果，余额可能已变化。",
+  "balanceScope": "来自当前登录的 DeepSeek 官方账号，包含充值与赠送余额；不同币种分别显示。其他渠道余额不包含在内，与会话费用估算分别统计。页面可见时每分钟刷新。",
+  "balanceClose": "关闭余额详情"
 }

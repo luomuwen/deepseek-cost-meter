@@ -1,10 +1,25 @@
+import { createBalanceStore, walletAmounts } from './client-balance.js';
+import { createBalanceComponent } from './client-balance-view.js';
 /** Browser factory: React and ReactDOM are shared with the host. */
-export function clientFactory(require, dictionaries) {
+export function clientFactory(require, dictionaries, clientVersion = 'deepseek-cost-meter/dev') {
   const React = require('react');
   const { createPortal } = require('react-dom');
   const h = React.createElement;
   const ns = 'local-turn-cost';
+  const SidebarBalance = createBalanceComponent(React, createPortal, walletAmounts);
   const css = `
+    .dsh-cost-balance { display: flex; flex: 1 1 100%; min-width: 0; align-items: center; gap: 4px; padding: 4px 0; }
+    .dsh-cost-balance button { font: inherit; color: var(--dsw-alias-label-secondary, #555); background: transparent; border: 0; border-radius: 6px; cursor: pointer; }
+    .dsh-cost-balance button:hover { background: var(--dsw-alias-interactive-bg-hover, #eee); }
+    .dsh-cost-balance button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+    .dsh-cost-balance-button { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 6px; text-align: left; font-size: 12px !important; }
+    .dsh-cost-balance-button svg { flex: none; }
+    .dsh-cost-balance-button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .dsh-cost-balance-refresh { flex: none; width: 28px; height: 28px; }
+    .dsh-cost-balance button:disabled, .dsh-cost-balance-refresh-action:disabled { opacity: .5; cursor: default; }
+    .dsh-cost-balance[data-wide=false] { justify-content: center; padding: 0; }
+    .dsh-cost-balance[data-wide=false] .dsh-cost-balance-button { flex: none; justify-content: center; width: 36px; height: 36px; }
+    .dsh-cost-balance-refresh-action { padding: 6px 10px; margin-top: 12px; border: 1px solid var(--dsw-alias-border-primary, #ddd); border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
     .dsh-cost-meter { margin: 6px 0; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.6; }
     .dsh-cost-meter summary { cursor: pointer; width: fit-content; max-width: 100%; padding: 4px 8px; border-radius: 6px; }
     .dsh-cost-meter summary:hover { background: var(--dsw-alias-interactive-bg-hover); }
@@ -228,6 +243,15 @@ export function clientFactory(require, dictionaries) {
       ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
         name: 'conversation.composer.dock', id: 'local-deepseek-cost-meter', locale: ns, order: 2,
       }, CostDock));
+      // Optional account services: older hosts retain the existing per-turn and dock controls.
+      ctx.inject?.(['remote', 'remote.account'], accountCtx => {
+        const store = createBalanceStore();
+        accountCtx.effect(() => store.connect(accountCtx.remote, () => ({ version: clientVersion,
+          locale: ctx.locale.getSnapshot().active, timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60 })));
+        accountCtx.slots.inject('sidebar.footer.action', () => accountCtx.slots.register({
+          name: 'sidebar.footer.action', id: 'local-deepseek-cost-meter-balance', locale: ns, order: 30,
+        }, props => h(SidebarBalance, { ...props, store })));
+      });
     },
   };
 }
