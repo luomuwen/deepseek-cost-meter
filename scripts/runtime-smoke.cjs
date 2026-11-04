@@ -76,25 +76,41 @@ const assert = require('node:assert/strict');
       JSON.parse(await fs.readFile(path.join(pluginRoot, 'locale', lang + '.json'), 'utf8'))])));
     const testRequire = createRequire(path.join(path.resolve(__dirname, '..'), 'package.json'));
     const manifest = JSON.parse(await fs.readFile(path.join(pluginRoot, 'package.json'), 'utf8'));
+    // Validate the native account result contract without reading credentials or querying a real wallet.
+    const { AccountController } = req('@deepseek-ai/dsh-api-account-controller');
+    const accountContract = req('@deepseek-ai/dsh-api-account-controller/typert').TYPERT.invocations
+      .find(descriptor => descriptor.namespace === 'account' && descriptor.method === 'getBalance');
+    const sampleBalance = { status: 'ready', value: [{ currency: 'CNY', balance: '10.25' }],
+      bonusWallets: [{ currency: 'CNY', balance: '2' }] };
+    const metadata = { version: `${manifest.name}/${manifest.version}`, locale: 'zh', timezoneOffsetSeconds: 28800 };
+    const balanceResult = await AccountController.prototype.getBalance.call({ ctx: { deepseekAccount: {
+      getBalance(client) { assert.deepEqual(client, metadata); return sampleBalance; },
+    } } }, metadata);
+    accountContract.result.spec.create().parse(balanceResult);
     let registration;
     const sandbox = { window: { __ModuleLoader__: { load(value) { registration = value; } } } };
     require('node:vm').runInNewContext(await fs.readFile(path.join(pluginRoot, 'client.js'), 'utf8'), sandbox);
     assert.equal(registration.id, manifest.name);
     const browser = registration.factory(testRequire);
     const cleanups = [];
-    let Component, Dock, registered = 0;
+    let Component, Dock, Balance, registered = 0;
     global.document = { createElement: () => ({ dataset: {}, remove() { registered--; } }), head: { appendChild() { registered++; } } };
     sandbox.document = global.document;
-    browser.apply({
+    const browserCtx = {
       effect(fn) { cleanups.push(fn()); },
-      locale: { register() { return () => {}; } },
-      slots: { inject(name, fn) { assert.ok(['conversation.chat.turnTail', 'conversation.composer.dock'].includes(name)); cleanups.push(fn()); },
+      inject(names, fn) { assert.deepEqual(Array.from(names), ['remote', 'remote.account']); fn(browserCtx); },
+      remote: { $stream() { return { async *[Symbol.asyncIterator]() {}, dispose() {} }; } },
+      locale: { register() { return () => {}; }, getSnapshot() { return { active: 'zh' }; } },
+      slots: { inject(name, fn) { assert.ok(['conversation.chat.turnTail', 'conversation.composer.dock', 'sidebar.footer.action'].includes(name)); cleanups.push(fn()); },
         register(options, C) {
           if (options.name === 'conversation.chat.turnTail') { Component = C; return () => { Component = null; }; }
+          if (options.name === 'sidebar.footer.action') { Balance = C; return () => { Balance = null; }; }
           assert.equal(options.order, 2);
           Dock = C; return () => { Dock = null; };
         } },
-    });
+    };
+    browser.apply(browserCtx);
+    assert.equal(typeof Balance, 'function');
     const React = testRequire('react');
     const { renderToStaticMarkup } = testRequire('react-dom/server');
     const t = (key, vars = {}) => dictionaries.zh[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
@@ -116,12 +132,13 @@ const assert = require('node:assert/strict');
     assert.equal(registered, 0);
     assert.equal(Component, null);
     assert.equal(Dock, null);
+    assert.equal(Balance, null);
     await upgraded.dispose();
     assert.equal(ctx.sessionProjections.snapshot(session).values.localTurnCost, undefined);
     const reloaded = ctx.plugin(plugin, upgradeConfig);
     await reloaded;
     assert.deepEqual(ctx.sessionProjections.snapshot(session).values.localTurnCost, mixed);
-    console.log('PASS: real Harness services, catalog upgrade, mixed providers, partial prices, session replay, turn-tail and composer-dock rendering, unload/reload.');
+    console.log('PASS: real Harness services, account RPC result contract, sidebar balance registration, catalog upgrade, mixed providers, session replay, turn-tail and composer-dock rendering, unload/reload.');
   } finally {
     await ctx.fiber.dispose();
     await fs.rm(root, { recursive: true, force: true });

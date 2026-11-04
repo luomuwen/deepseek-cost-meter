@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-11-04
+
+- Show the signed-in DeepSeek account balance above the sidebar account menu through the existing authenticated Harness account service.
+- Keep top-up and bonus wallets distinct, sum only matching currencies, and retain exact decimal inputs.
+- Refresh once per visible minute, offer throttled manual refresh, label stale results, and clear balances on account changes/disconnect.
+- Keep balances and credentials out of plugin storage; preserve all existing session cost accounting.
+- Add account lifecycle/race tests and bilingual React interaction coverage.
+
 ## 0.3.0 — 2026-11-02
 
 - Add a composer dock cost control with session totals, latest completed turn and provider/model breakdowns.

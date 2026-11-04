@@ -52,5 +52,22 @@
   "dockClose": "Close cost details",
   "dockRunning": "Current turn is running and not included; amounts cover completed turns only.",
   "dockSettled": "Updated after each turn ends, including failed and interrupted turns.",
-  "dockScope": "New model calls in this session only. Inherited fork history, independent child sessions and tool fees are excluded. Amounts are estimates; provider billing takes precedence."
+  "dockScope": "New model calls in this session only. Inherited fork history, independent child sessions and tool fees are excluded. Amounts are estimates; provider billing takes precedence.",
+  "balanceTitle": "DeepSeek account balance",
+  "balanceShort": "Balance",
+  "balanceLoading": "Loading balance…",
+  "balanceUnsupported": "Account balances are unavailable in this DSH version",
+  "balanceSignIn": "Sign in to your DeepSeek account",
+  "balanceDisconnected": "Account disconnected; reconnect DSH",
+  "balanceFailed": "Balance query failed; try refreshing later",
+  "balanceEmpty": "No wallet data",
+  "balanceStale": "last balance",
+  "balanceRefresh": "Refresh balance",
+  "balanceTotal": "Account total",
+  "balanceRecharge": "Top-up balance",
+  "balanceBonus": "Bonus balance",
+  "balanceUpdated": "Updated at {time}",
+  "balanceStaleNote": "Showing the last successful query. Your balance may have changed.",
+  "balanceScope": "From the signed-in official DeepSeek account, including top-up and bonus wallets. Currencies stay separate. Other providers are excluded. Account balance is separate from estimated session costs. Refreshes every minute while this page is visible.",
+  "balanceClose": "Close balance details"
 }

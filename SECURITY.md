@@ -15,3 +15,5 @@ Include the plugin version, Harness version, operating system, affected componen
 The plugin reads local session events and stores aggregate usage/cost projections and price snapshots through Harness services. It does not send telemetry or issue model API requests. It does not intentionally copy prompts, answers, tool results or credentials into its own state. It runs with the permissions of the Harness host; it is not a security boundary.
 
 A cost estimate is not a spending limit or a billing guarantee. Missing usage, unavailable tariffs and expired calendars must remain visible as incomplete.
+
+The sidebar balance feature invokes the existing authenticated Harness account service for the signed-in DeepSeek account. The host handles credentials and the official network request. Wallet values are memory-only, are never included in cost projections or exports, and are cleared when account state changes or the account stream ends. No other provider endpoint or credential discovery is used.
