@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1 — 2026-11-18
+
+- Fix false sign-in prompts after upgrading Harness: accept both legacy account views and the new `snapshot` / `credentials-changed` event envelope.
+- Treat unrecognized account payloads as unsupported instead of signed out, and clear old wallet data on every account update.
+- Add regression coverage for the new event shape, signed-in account switches and unknown events; extend the real-runtime check to exercise native account events through the generated sidebar client.
+
 ## 0.4.0 — 2026-11-04
 
 - Show the signed-in DeepSeek account balance above the sidebar account menu through the existing authenticated Harness account service.

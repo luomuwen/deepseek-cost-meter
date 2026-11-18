@@ -20,6 +20,8 @@ Estimated model cost CNY 0.012300 · 1 call
 
 The example uses the bundled peak rate for deepseek-v4-pro. Amounts are estimates based on recorded API usage and configured prices, not account billing records.
 
+**Fixed in 0.4.1:** supports the new Harness account event envelope so signed-in users no longer see a false sign-in prompt.
+
 **New in 0.4.0:** an account-balance control above the sidebar account menu reads the signed-in official DeepSeek account through Harness. Click for top-up/bonus wallets and the last update time. Refreshes every minute while visible, with manual refresh, stale-data labels and account-change protection. No additional API key is required. API-key-only users need an account sign-in; other providers are not covered. Balances remain in memory and are separate from estimated session costs.
 
 **New in 0.3.0:** a cost control beneath the composer shows the settled session estimate. Click it for the latest completed turn and per-provider/model costs, calls and recorded tokens. It sits alongside the native statistics controls without replacing them.
@@ -28,7 +30,7 @@ The example uses the bundled peak rate for deepseek-v4-pro. Amounts are estimate
 
 ## Install
 
-Requires an existing DeepSeek Harness installation. Version 0.4.0 was tested against the real Desktop **0.2.1-rc.5 runtime on macOS**; other versions and platforms are unverified. No API key or additional model requests are needed.
+Requires an existing DeepSeek Harness installation. Version 0.4.1 was tested against the real Desktop **0.2.2-rc.3 runtime on macOS**, while retaining the legacy 0.2.1 account event format; other versions and platforms are unverified. No API key or additional model requests are needed.
 
 Install the npm package into the Desktop profile:
 
@@ -68,7 +70,7 @@ Reapply custom prices and restart Harness. Storage and projection identifiers st
 
 ### Source or release archive
 
-Tested with the DeepSeek Harness Desktop **0.2.1-rc.5 runtime on macOS**. Other versions and platforms are unverified. Source installation requires Node.js 22+, npm and Git.
+Tested with the DeepSeek Harness Desktop **0.2.2-rc.3 runtime on macOS**. Other versions and platforms are unverified. Source installation requires Node.js 22+, npm and Git.
 
 ```sh
 git clone https://github.com/luomuwen/deepseek-cost-meter.git

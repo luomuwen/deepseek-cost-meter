@@ -76,30 +76,68 @@ const assert = require('node:assert/strict');
       JSON.parse(await fs.readFile(path.join(pluginRoot, 'locale', lang + '.json'), 'utf8'))])));
     const testRequire = createRequire(path.join(path.resolve(__dirname, '..'), 'package.json'));
     const manifest = JSON.parse(await fs.readFile(path.join(pluginRoot, 'package.json'), 'utf8'));
-    // Validate the native account result contract without reading credentials or querying a real wallet.
-    const { AccountController } = req('@deepseek-ai/dsh-api-account-controller');
-    const accountContract = req('@deepseek-ai/dsh-api-account-controller/typert').TYPERT.invocations
-      .find(descriptor => descriptor.namespace === 'account' && descriptor.method === 'getBalance');
+    // Exercise the installed host's account contract using synthetic data, never credentials.
+    let legacyAccount = false;
+    try { req.resolve('@deepseek-ai/dsh-api-account-controller'); legacyAccount = true; }
+    catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error; }
+    const accountPackage = legacyAccount ? '@deepseek-ai/dsh-api-account-controller' : '@deepseek-ai/dsh-deepseek-account';
+    const contracts = req(accountPackage + '/typert').TYPERT.invocations;
+    const accountContract = contracts.find(descriptor => descriptor.namespace === 'account' && descriptor.method === 'getBalance');
+    const watchContract = contracts.find(descriptor => descriptor.namespace === 'account' && descriptor.method === 'watch');
     const sampleBalance = { status: 'ready', value: [{ currency: 'CNY', balance: '10.25' }],
       bonusWallets: [{ currency: 'CNY', balance: '2' }] };
     const metadata = { version: `${manifest.name}/${manifest.version}`, locale: 'zh', timezoneOffsetSeconds: 28800 };
-    const balanceResult = await AccountController.prototype.getBalance.call({ ctx: { deepseekAccount: {
-      getBalance(client) { assert.deepEqual(client, metadata); return sampleBalance; },
-    } } }, metadata);
-    accountContract.result.spec.create().parse(balanceResult);
+    const accountView = { status: 'credential-stored', attempt: null,
+      links: { usageUrl: 'https://example.com/usage', topUpUrl: 'https://example.com/top_up' } };
+    let balanceResult, accountEvent;
+    if (legacyAccount) {
+      const { AccountController } = req(accountPackage);
+      balanceResult = await AccountController.prototype.getBalance.call({ ctx: { deepseekAccount: {
+        getBalance(client) { assert.deepEqual(client, metadata); return sampleBalance; },
+      } } }, metadata);
+      accountContract.result.spec.create().parse(balanceResult);
+      accountEvent = accountView;
+    } else {
+      const { DeepSeekAccount } = req(accountPackage);
+      const account = Object.assign(Object.create(DeepSeekAccount.prototype), {
+        listeners: new Set(), detailsLifetime: new AbortController(), closed: false,
+        getState: async () => accountView,
+        detailHeaders(client) { assert.deepEqual(client, metadata); return {}; },
+        getDetail(kind) { assert.equal(kind, 'balance'); return sampleBalance; },
+      });
+      const value = await account.getBalance(metadata);
+      accountContract.result.spec.create().parse(value);
+      balanceResult = { ok: true, value }; // Transport envelope around the direct Remote result.
+      const abort = new AbortController();
+      const updates = account.watchState(abort.signal);
+      try { accountEvent = (await updates.next()).value; }
+      finally { abort.abort(); await updates.return(); }
+      assert.equal(account.listeners.size, 0);
+    }
+    watchContract.result.spec.create().parse(accountEvent);
     let registration;
-    const sandbox = { window: { __ModuleLoader__: { load(value) { registration = value; } } } };
+    const sandbox = { setTimeout, clearTimeout, window: { __ModuleLoader__: { load(value) { registration = value; } } } };
     require('node:vm').runInNewContext(await fs.readFile(path.join(pluginRoot, 'client.js'), 'utf8'), sandbox);
     assert.equal(registration.id, manifest.name);
     const browser = registration.factory(testRequire);
     const cleanups = [];
-    let Component, Dock, Balance, registered = 0;
+    let Component, Dock, Balance, registered = 0, balanceCalls = 0, accepted = 0;
     global.document = { createElement: () => ({ dataset: {}, remove() { registered--; } }), head: { appendChild() { registered++; } } };
     sandbox.document = global.document;
     const browserCtx = {
       effect(fn) { cleanups.push(fn()); },
       inject(names, fn) { assert.deepEqual(Array.from(names), ['remote', 'remote.account']); fn(browserCtx); },
-      remote: { $stream() { return { async *[Symbol.asyncIterator]() {}, dispose() {} }; } },
+      remote: {
+        account: { async getBalance() { balanceCalls++; return balanceResult; } },
+        $stream() {
+          let end;
+          const done = new Promise(resolve => { end = resolve; });
+          return { async *[Symbol.asyncIterator]() {
+            yield { value: accountEvent, accept() { accepted++; } };
+            await done;
+          }, dispose() { end(); } };
+        },
+      },
       locale: { register() { return () => {}; }, getSnapshot() { return { active: 'zh' }; } },
       slots: { inject(name, fn) { assert.ok(['conversation.chat.turnTail', 'conversation.composer.dock', 'sidebar.footer.action'].includes(name)); cleanups.push(fn()); },
         register(options, C) {
@@ -114,6 +152,12 @@ const assert = require('node:assert/strict');
     const React = testRequire('react');
     const { renderToStaticMarkup } = testRequire('react-dom/server');
     const t = (key, vars = {}) => dictionaries.zh[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(balanceCalls, 1, 'native account update must trigger a balance query');
+    assert.equal(accepted, 1);
+    const balanceHtml = renderToStaticMarkup(React.createElement(Balance, { t }));
+    assert.match(balanceHtml, /CNY 12.25/);
+    assert.doesNotMatch(balanceHtml, /请先登录/);
     const html = renderToStaticMarkup(React.createElement(Component, { turn: { turn: 1 }, useProjection: () => snapshot, t }));
     assert.match(html, /本轮模型费用约 CNY/);
     assert.match(html, /未缓存输入/);
@@ -138,7 +182,7 @@ const assert = require('node:assert/strict');
     const reloaded = ctx.plugin(plugin, upgradeConfig);
     await reloaded;
     assert.deepEqual(ctx.sessionProjections.snapshot(session).values.localTurnCost, mixed);
-    console.log('PASS: real Harness services, account RPC result contract, sidebar balance registration, catalog upgrade, mixed providers, session replay, turn-tail and composer-dock rendering, unload/reload.');
+    console.log('PASS: real Harness services, native account event/result contracts, generated sidebar balance rendering, catalog upgrade, mixed providers, session replay, turn-tail and composer-dock rendering, unload/reload.');
   } finally {
     await ctx.fiber.dispose();
     await fs.rm(root, { recursive: true, force: true });

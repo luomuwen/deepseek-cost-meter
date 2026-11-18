@@ -50,8 +50,13 @@ export function createBalanceStore({ now = Date.now, visible = () => document.vi
         for await (const frame of active) {
           if (disposed || stream !== active) break;
           generation++; cancelReads(); pending = undefined; lastAttempt = -Infinity;
-          signedIn = frame.value.status === 'credential-stored';
-          reset(signedIn ? 'loading' : 'signed-out');
+          // 0.2.1 streams AccountView directly; 0.2.2 wraps it in AccountUpdate.
+          // Unknown events must not masquerade as a signed-out account.
+          const update = frame.value;
+          const view = update?.type === 'snapshot' || update?.type === 'credentials-changed'
+            ? update.state : update?.type === undefined ? update : null;
+          signedIn = view?.status === 'credential-stored';
+          reset(signedIn ? 'loading' : view?.status === 'signed-out' ? 'signed-out' : 'unavailable');
           frame.accept();
           void refresh();
         }
