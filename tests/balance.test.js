@@ -23,7 +23,7 @@ function fixture(query = async () => ready(), timeoutMs = 15000) {
   const close = store.connect(remote, () => ({ version: 'test', locale: 'zh', timezoneOffsetSeconds: 28800 }));
   return { store, close, calls: () => calls, requests,
     async account(status = 'credential-stored') {
-      queue.push({ value: { status }, accept() { accepted++; } }); wake?.(); await tick();
+      queue.push({ value: typeof status === 'string' ? { status } : status, accept() { accepted++; } }); wake?.(); await tick();
     },
     advance(ms = 60000) { clock += ms; }, hide(value = true) { shown = !value; },
     stop() { stream.dispose(); }, accepted: () => accepted };
@@ -49,6 +49,50 @@ test('signed-out accounts never query; signed-in reads use the host and manual r
     await f.store.refresh(true); assert.equal(f.calls(), 1);
     f.advance(5000); await f.store.refresh(true); assert.equal(f.calls(), 2);
     assert.equal(f.accepted(), 2);
+  } finally { f.close(); }
+});
+test('Harness 0.2.2 account updates query the signed-in wallet and clear it on sign-out', async () => {
+  const f = fixture();
+  try {
+    await f.account({ type: 'snapshot', state: { status: 'credential-stored' } });
+    assert.equal(f.calls(), 1);
+    assert.equal(f.store.getSnapshot().status, 'ready');
+    assert.equal(walletAmounts(f.store.getSnapshot().wallets), 'CNY 13.35');
+    await f.account({ type: 'credentials-changed', state: { status: 'signed-out' } });
+    assert.equal(f.store.getSnapshot().status, 'signed-out');
+    assert.equal(f.store.getSnapshot().wallets.length, 0);
+    await f.store.refresh(true);
+    assert.equal(f.calls(), 1);
+    assert.equal(f.accepted(), 2);
+  } finally { f.close(); }
+});
+test('credential changes between two signed-in accounts discard the previous in-flight wallet', async () => {
+  const resolvers = [];
+  const f = fixture(() => new Promise(resolve => resolvers.push(resolve)));
+  try {
+    await f.account({ type: 'snapshot', state: { status: 'credential-stored' } });
+    await f.account({ type: 'credentials-changed', state: { status: 'credential-stored' } });
+    assert.equal(f.calls(), 2);
+    resolvers[0](ready('999')); await tick();
+    assert.equal(f.store.getSnapshot().wallets.length, 0);
+    resolvers[1](ready('2')); await tick();
+    assert.equal(walletAmounts(f.store.getSnapshot().wallets), 'CNY 3.00');
+  } finally { f.close(); }
+});
+test('unknown account event shapes clear old wallets without falsely reporting signed-out', async () => {
+  const f = fixture();
+  try {
+    await f.account();
+    for (const event of [null, {}, { type: 'snapshot', state: null },
+      { type: 'future-event', state: { status: 'credential-stored' } }, { status: 'future-status' }]) {
+      await f.account(event);
+      assert.equal(f.store.getSnapshot().status, 'unavailable');
+      assert.equal(f.store.getSnapshot().wallets.length, 0);
+      await f.store.refresh(true);
+      assert.equal(f.calls(), 1);
+    }
+    await f.account({ type: 'snapshot', state: { status: 'credential-stored' } });
+    assert.equal(f.store.getSnapshot().status, 'ready');
   } finally { f.close(); }
 });
 test('visibility gates automatic queries; becoming visible can refresh a stale result', async () => {
